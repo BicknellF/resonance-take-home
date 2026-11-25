@@ -120,6 +120,7 @@ flowchart LR
     O -->|pass / auto-fix| P([Send])
     O -->|simple fix| S([Submitter])
     O -->|judgement| R([Reviewer])
+    S -->|corrects and resubmits| E
     R -->|edit| E
     E -.->|back-test misses| L[LLM proposes rules] -.->|approved| E
 ```
@@ -228,11 +229,13 @@ rules or a person has decided what to do with it.
 
 ```mermaid
 flowchart LR
-    S([Submitter]) -->|submits claims| A[Claim checker]
+    %% Edge order matters: it puts the reviewer under the main row, feeding into the checker's left side.
+    S([Submitter]) ~~~ R([Reviewer])
+    S -->|submits claims| A[Claim checker]
+    R -->|reviewed claims| A
     A -->|passes or safely auto-fixed| P([Payer])
     A -->|"submitter can fix it<br>(units, filing date)"| S
-    A -->|needs judgement| R([Reviewer])
-    R -->|approves or edits the fix| A
+    A -->|needs judgement| R
 ```
 
 `run.py bot` posts short cards with ✅ / ❌ / 🔍 reactions already added, so a reviewer only clicks:

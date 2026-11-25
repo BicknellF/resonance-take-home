@@ -378,3 +378,16 @@ A running log of prompts given to Claude Code in this project, with a short summ
 **Claude response:**
 - Replaced both Mermaid diagrams in `README.md` with the simplified versions, plus a one-line note on the ledger under the logic diagram.
 - Committed everything outstanding (simplified diagrams, plus the ablation study: `src/ablation.py`, `run.py ablate`, `output/ablation.md`, README ablation section) and pushed to `origin/master`.
+
+---
+
+## 30. 2026-11-25
+
+**Prompt:**
+> on the human in the loop diagram please move the reviewer box to be below the checker box and have ther reviewed claims flow back in to the left hand side of the checker. on the main how it works diagram please ahve the simple fix flow back into the checker
+
+**Claude response:**
+- Human-in-the-loop diagram (`README.md`): reordered the edges and added an invisible `Submitter ~~~ Reviewer` link so the reviewer sits under the main row and "reviewed claims" enter the checker from the left.
+- Noted that Mermaid places nodes automatically, so "directly below" can't be forced in a left-to-right layout. Below and slightly left is the closest.
+- How-it-works diagram: added `Submitter --corrects and resubmits--> Check` so the simple-fix path loops back into the checker.
+- Committed and pushed to `origin/master` for review on GitHub.
