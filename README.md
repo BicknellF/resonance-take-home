@@ -63,6 +63,34 @@ All 74 misses are explained:
 Paid vs denied only: 1,038 of 1,099 denials caught, and 1 false alarm in 2,731 paid claims.
 Full report, including a before/after September split: `output/backtest_report.md`.
 
+### Sonnet rediscovers a rule from denial remarks
+
+Summit's **contract amendment 3** (whole hours from July) isn't in any payer manual. It only shows up in denial
+remarks. To show the LLM can find rules like this, `run.py propose --without-contract-rules` removes it from the
+rules and asks Sonnet to explain the misses. This is a real run (output in `output/proposals.json`):
+
+| Step | What happens | Result |
+|---|---|---|
+| 1. Back-test without amendment 3 | Rules alone, Summit's contract rule removed | **97.2%** exact match, **109** claims wrong |
+| 2. Sonnet reads the misses | One call with a table of the 109 misses (payer, service, dates, units, modifier, actual vs predicted, **payer remark**). It may only propose rule types the engine can run. | 1 rule proposed, 62 claims sent for investigation |
+| 3. The proposal is tested on all of history | The engine re-runs every past claim with the rule added | **35 denials newly caught, 0 paid claims wrongly denied, 0 claims made wrong** |
+| 4. A person approves it in Discord (✅) | The rule is written to `rules/PY03.yaml` | Back-test back to **98.1%** |
+
+What Sonnet proposed (`output/proposals.json`, unedited):
+
+> **PY03 amendment 3: units must be whole hours (multiple of 4)**
+> All of these are PY03 claims dated 2026-07-01 or later. The remark cites contract amendment 3 and hourly
+> increments, and every unit count is not a multiple of 4, which is 4 fifteen-minute units per hour. PY03 claims dated
+> before July with the same kind of unit count (C014376, C009183) got only generic remarks. […] The payer most often
+> used D10.
+>
+> `{type: units_multiple_of, value: 4, dos_from: 2026-07-01, code: D10}`
+
+It found the start date by itself (June claims with odd units were paid), and the rule matches the hand-written one
+exactly. The other 62 misses (61 generic "contact payer" D99s and the one hidden-outcome claim) had no checkable
+pattern, so Sonnet sent them to #needs-investigation with its best guess ("likely manual review or missing
+documentation the engine can't see") instead of inventing a rule.
+
 ### Ablation: what each part of the agent adds
 
 Same back-test, re-run with parts of the agent switched on or off (`run.py ablate`, written to `output/ablation.md`).
@@ -331,5 +359,5 @@ python -m venv .venv
 - Persist the bot's message-to-claim map so reactions survive a restart.
 - Write fixes back to the billing system instead of a CSV.
 
-See `PLAN.md` for the design, `CLAUDE.md` for the data findings, and `PROMPT_LOG.md` for how this was built with
+See `DEMO.md` for the demo script, `PLAN.md` for the design, `CLAUDE.md` for the data findings, and `PROMPT_LOG.md` for how this was built with
 Claude Code.

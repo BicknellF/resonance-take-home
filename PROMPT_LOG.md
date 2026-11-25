@@ -391,3 +391,26 @@ A running log of prompts given to Claude Code in this project, with a short summ
 - Noted that Mermaid places nodes automatically, so "directly below" can't be forced in a left-to-right layout. Below and slightly left is the closest.
 - How-it-works diagram: added `Submitter --corrects and resubmits--> Check` so the simple-fix path loops back into the checker.
 - Committed and pushed to `origin/master` for review on GitHub.
+
+---
+
+## 31. 2026-11-25
+
+**Prompt:**
+> in the results please show how sonnet rediscovers rules. please also create DEMO.md with the commands needed to run and the reset steps and a bullet point summary of what i need to make sure I cover
+
+**Claude response:**
+- Added "Sonnet rediscovers a rule from denial remarks" to the README results, using the real run in `output/proposals.json`. Without amendment 3 the back-test is 97.2% (109 misses). Sonnet proposed `units_multiple_of 4 from 2026-07-01 → D10`, which on the history test catches 35 denials with 0 false denials. Approving it brings the back-test back to 98.1%, and the other 62 misses go to investigation. Quotes Sonnet's unedited explanation.
+- Created `DEMO.md`: setup, reset steps (`git checkout -- rules/ mappings.yaml output/`, delete edit/decision files, re-run `check`), an 8-step 10-minute running order with the exact commands and what to point at, gotchas (re-run `check` after `--extra`, ✅ on the proposal says "already exists", don't run `ablate` live), and bullet points to cover.
+- Dry-ran the demo commands (`check --extra`, `edit` with knock-on, `explain --no-llm`) and reset the state afterwards (`git status` clean).
+- Linked `DEMO.md` from the README.
+
+---
+
+## 32. 2026-11-25
+
+**Prompt:**
+> ok please commit and push
+
+**Claude response:**
+- Committed the Sonnet rediscovery section in `README.md`, the new `DEMO.md` and the prompt log, and pushed to `origin/master`.
