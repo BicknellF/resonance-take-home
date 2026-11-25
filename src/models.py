@@ -101,6 +101,8 @@ class Fix:
     apply: Optional[Callable[[Claim], Claim]] = None    # how to change the claim (if auto=False,
                                                         # only used to suggest the change to a person)
     stop_claim: bool = False                            # True = don't submit at all
+    submitter: bool = False                             # True = shown to whoever submits the claim
+                                                        # (they know the visit / dates); no reviewer
 
 
 @dataclass
@@ -109,9 +111,11 @@ class CheckResult:
     claim: Claim
     issues: list[Issue]
     predicted_code: str                     # "" = predicted paid
-    outcome: str = "pass"                   # pass / auto_fixed / do_not_submit / needs_person
+    outcome: str = "pass"                   # pass / auto_fixed / do_not_submit /
+                                            # return_to_submitter / needs_person
     fixes: list[Fix] = field(default_factory=list)
     fixed_claim: Optional[Claim] = None
+    suggested_claim: Optional[Claim] = None  # what the suggested (non-auto) fixes would give
     notes: list[str] = field(default_factory=list)
 
     @property

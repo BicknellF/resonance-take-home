@@ -4,10 +4,15 @@ Approved auto fixes (user decision, see PLAN.md):
   D04 set modifier · D05 drop a duplicate of a paid claim ·
   D05 turn a duplicate of a denied claim into a correction (frequency 7)
 
-Never automatic, a person decides (the system suggests the exact change):
-  - Unit cuts (D09 visit time, D06 daily cap, D10 whole hours). Cutting gives up revenue,
-    and the visit record itself may be wrong, so it's a judgement call.
-  - Authorization fixes (D07/D08).
+Back to the submitter (shown when the claim is submitted, no reviewer involved):
+  - D09 units above the verified visit time: the submitter bills what the visit supports,
+    or fixes the visit record (they know the visit, a reviewer doesn't).
+  - D03 past the filing limit: can't be sent; the submitter writes it off.
+
+Never automatic, a reviewer decides (the system suggests the exact change):
+  - Other unit cuts (D06 daily cap, D10 whole hours): they give up revenue on a contract
+    or cap decision, so it's a judgement call.
+  - Authorization fixes (D07/D08), missing visits (D01), exhausted authorizations (D02).
 
 Guardrails: a claim is only auto-fixed if every issue has an auto fix, the billed
 amount doesn't go up, and the fixed claim passes every rule when checked again.
@@ -45,7 +50,7 @@ def fix_for(issue: Issue, claim: Claim) -> Fix:
     if issue.code == "D09":
         cap = d["units_supported"]
         return Fix("D09", f"Bill at most {cap} units (verified {d['verified_minutes']} min), "
-                          f"or correct the visit record if it's wrong", auto=False,
+                          f"or correct the visit record if it's wrong", auto=False, submitter=True,
                    apply=lambda c: with_units(c, min(c.units, cap)))
 
     if issue.code == "D06":
@@ -75,9 +80,10 @@ def fix_for(issue: Issue, claim: Claim) -> Fix:
 
     if issue.code in ("D07", "D08"):
         valid = d.get("valid_auths", [])
-        if len(valid) == 1:
-            hint = f"use {valid[0]}"
-        elif valid:
+        if len(valid) == 1:   # suggested to the person, never applied automatically
+            return Fix(issue.code, f"Check the authorization number (use {valid[0]})", auto=False,
+                       apply=lambda c: replace(c, auth_id=valid[0]))
+        if valid:
             hint = f"one of {', '.join(valid)}"
         else:
             hint = "no valid authorization on file: request one from the payer"
@@ -100,13 +106,16 @@ def fix_for(issue: Issue, claim: Claim) -> Fix:
                    auto=False)
 
     if issue.code == "D03":
-        return Fix("D03", "Past the filing limit: can't be fixed (write off or appeal)", auto=False)
+        return Fix("D03", "Past the filing limit: don't send (write off)", auto=False, submitter=True)
 
     return Fix(issue.code, "No automatic fix known: needs a person", auto=False)
 
 
-def plan_fixes(result: CheckResult, ctx: RuleContext, ledger: Ledger) -> CheckResult:
-    """Fill in fixes and the outcome for a checked claim. Call before the ledger records it."""
+def plan_fixes(result: CheckResult, ctx: RuleContext, ledger: Ledger, allow_auto: bool = True) -> CheckResult:
+    """Fill in fixes and the outcome for a checked claim. Call before the ledger records it.
+
+    `allow_auto=False` (a person undid an auto fix on this claim) sends every problem to a person.
+    """
     claim, issues = result.claim, result.issues
     if not issues:
         result.outcome = "pass"
@@ -114,13 +123,24 @@ def plan_fixes(result: CheckResult, ctx: RuleContext, ledger: Ledger) -> CheckRe
 
     result.fixes = [fix_for(issue, claim) for issue in issues]
 
+    if not allow_auto:
+        result.fixes = [replace(f, auto=False) for f in result.fixes]
+        result.outcome = "needs_person"
+        suggest_correction(result, ctx, ledger)
+        return result
+
     if any(f.stop_claim for f in result.fixes):
         result.fixes = [f for f in result.fixes if f.stop_claim]   # other fixes are moot
         result.outcome = "do_not_submit"
         return result
 
-    if not all(f.auto for f in result.fixes):
-        result.outcome = "needs_person"
+    if not all(f.auto or f.submitter for f in result.fixes):
+        result.outcome = "needs_person"       # at least one problem needs a reviewer's judgement
+        suggest_correction(result, ctx, ledger)
+        return result
+
+    if any(f.submitter for f in result.fixes):
+        result.outcome = "return_to_submitter"   # every problem is one the submitter can see and fix
         suggest_correction(result, ctx, ledger)
         return result
 
@@ -169,8 +189,9 @@ def suggest_correction(result: CheckResult, ctx: RuleContext, ledger: Ledger) ->
         return
     fixed, _, remaining = apply_fixes(claim, suggestable, ctx, ledger, allowed=lambda f: True)
     changes = [f"{name} {getattr(claim, name) or 'none'} -> {getattr(fixed, name)}"
-               for name in ("units", "modifier", "frequency_code") if getattr(claim, name) != getattr(fixed, name)]
+               for name in ("units", "modifier", "auth_id", "frequency_code") if getattr(claim, name) != getattr(fixed, name)]
     if not changes:
         return
+    result.suggested_claim = fixed
     outcome = "would then pass" if not remaining else f"still needs: {', '.join(sorted(set(i.code for i in remaining)))}"
     result.notes.append(f"Suggested correction: {'; '.join(changes)} (${fixed.billed_amount:.2f}); {outcome}")

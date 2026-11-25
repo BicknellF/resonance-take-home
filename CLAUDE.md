@@ -20,10 +20,10 @@ Number entries sequentially and separate them with `---`.
 
 ## Code (implemented 2026-11-25)
 - Use the project virtualenv: `.venv/Scripts/python` (the Store Python's site-packages broke installing `anthropic`).
-- `run.py check | propose | explain <id> | bot`. Tests: `.venv/Scripts/python -m pytest -q`.
+- `run.py check | propose | explain <id> | bot`. Tests: `.venv/Scripts/python -m pytest -q`. `run.py edit <id> field=value` = a person's correction, checked again.
 - Layout: `src/load.py` (cleaning + holds), `rules.py` (one check per code), `ledger.py` (running state),
   `engine.py` (timeline), `fixes.py` (approved auto fixes + guardrails), `backtest.py`, `explain.py` (Haiku),
-  `propose.py` (Sonnet), `bot.py` (Discord), `mappings.py`. Payer rules: `rules/PY0x.yaml`; spellings: `mappings.yaml`.
+  `propose.py` (Sonnet), `bot.py` (Discord), `overrides.py` (human edits, re-run), `mappings.py`. Payer rules: `rules/PY0x.yaml`; spellings: `mappings.yaml`.
 - No API key or Discord token on this machine: LLM and bot paths are untested live (they fall back to templates).
 
 ---

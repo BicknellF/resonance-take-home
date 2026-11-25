@@ -54,6 +54,10 @@ def write_corrected_claims(results: list[CheckResult]) -> Path:
     return path
 
 
+def who(fix) -> str:
+    return "" if fix.auto else " [submitter]" if fix.submitter else " [person]"
+
+
 def write_review_queue(results: list[CheckResult]) -> Path:
     """review_queue.csv: every to-check claim that isn't a clean pass, with all problems and fixes."""
     rows = []
@@ -64,7 +68,7 @@ def write_review_queue(results: list[CheckResult]) -> Path:
             "claim_id": r.claim.claim_id, "payer_id": r.claim.payer_id, "outcome": r.outcome,
             "predicted_code": r.predicted_code,
             "issues": " | ".join(f"{i.code}: {i.message}" for i in r.issues),
-            "fixes": " | ".join(f"{f.code}: {f.description}{'' if f.auto else ' [person]'}" for f in r.fixes),
+            "fixes": " | ".join(f"{f.code}: {f.description}{who(f)}" for f in r.fixes),
             "notes": " | ".join(r.notes),
         })
     path = OUTPUT_DIR / "review_queue.csv"
@@ -84,13 +88,15 @@ def summary(results: list[CheckResult], dataset: Dataset) -> str:
     held = {h.claim_id for h in dataset.holds if h.source == "to_check"}
     count = lambda outcome: sum(r.outcome == outcome for r in checked)
     recovered = sum(r.fixed_claim.billed_amount for r in checked if r.outcome == "auto_fixed")
+    returned = sum(r.claim.billed_amount for r in checked if r.outcome == "return_to_submitter")
     at_risk = sum(r.claim.billed_amount for r in checked if r.outcome == "needs_person")
     lines = [
         f"Claims to check: {len(checked) + len(held)}",
         f"  pass as submitted:        {count('pass')}",
         f"  auto-fixed:               {count('auto_fixed')}  (${recovered:,.2f} now payable)",
         f"  don't submit (duplicate): {count('do_not_submit')}",
-        f"  needs a person:           {count('needs_person')}  (${at_risk:,.2f} at risk)",
+        f"  back to the submitter:    {count('return_to_submitter')}  (${returned:,.2f}; shown on submission)",
+        f"  needs a reviewer:         {count('needs_person')}  (${at_risk:,.2f} at risk)",
         f"  on hold (data issue):     {len(held)}",
     ]
     return "\n".join(lines)

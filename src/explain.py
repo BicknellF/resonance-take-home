@@ -21,6 +21,7 @@ OUTCOME_TEXT = {
     "pass": "No problems found. Ready to submit.",
     "auto_fixed": "Fixed automatically. No action needed unless you disagree.",
     "do_not_submit": "Don't submit this claim.",
+    "return_to_submitter": "Back to the submitter: fix this before sending (no reviewer needed).",
     "needs_person": "Needs a person: at least one problem can't be fixed automatically.",
 }
 
@@ -33,7 +34,7 @@ def facts(result: CheckResult) -> dict:
         "date_of_service": c.date_of_service.isoformat(), "units": c.units,
         "predicted_outcome": f"denied {result.predicted_code}" if result.predicted_code else "paid",
         "problems": [f"{i.code}: {i.message}" for i in result.issues],
-        "fixes": [{"fix": f.description, "automatic": f.auto} for f in result.fixes],
+        "fixes": [{"fix": f.description, "automatic": f.auto, "for_submitter": f.submitter} for f in result.fixes],
         "fixed_units": result.fixed_claim.units if result.fixed_claim else None,
         "outcome": OUTCOME_TEXT[result.outcome],
         "notes": result.notes,
@@ -45,7 +46,7 @@ def template_explanation(result: CheckResult) -> str:
     lines = [OUTCOME_TEXT[result.outcome]]
     lines += [f"- Problem {i.code}: {i.message}" for i in result.issues]
     for fix in result.fixes:
-        who = "done automatically" if fix.auto else "needs a person"
+        who = "done automatically" if fix.auto else "for the submitter" if fix.submitter else "needs a person"
         lines.append(f"- Fix: {fix.description} ({who})")
     if result.fixed_claim:
         lines.append(f"- Units {result.claim.units} -> {result.fixed_claim.units}; re-checked: passes")
@@ -61,7 +62,7 @@ def llm_explanation(result: CheckResult) -> str:
     response = client.messages.create(
         model=EXPLAIN_MODEL,
         max_tokens=2000,
-        output_config={"effort": "low"},   # short rewording task
+        thinking={"type": "disabled"},     # short rewording task: ~1s instead of ~2.5s
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": json.dumps(facts(result), indent=2)}],
     )

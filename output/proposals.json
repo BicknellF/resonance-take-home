@@ -1,0 +1,27 @@
+[
+  {
+    "title": "PY03 amendment 3: units must be whole hours (multiple of 4)",
+    "explanation": "All of these are PY03 claims dated 2026-07-01 or later. The remark cites contract amendment 3 and hourly increments, and every unit count is not a multiple of 4, which is 4 fifteen-minute units per hour. PY03 claims dated before July with the same kind of unit count (C014376, C009183) got only generic remarks. The engine predicted PAID or the wrong denial code. The payer most often used D10.",
+    "payer_id": "PY03",
+    "rule": {
+      "id": "proposed-py03-amendment-3:-units-must-be-whole-ho",
+      "type": "units_multiple_of",
+      "value": 4,
+      "dos_from": "2026-07-01",
+      "code": "D10",
+      "description": "From July 2026, PY03 only accepts units billed in whole hours, so units must be a multiple of 4."
+    },
+    "evidence": {
+      "newly_correct": 35,
+      "newly_wrong": 0,
+      "new_false_denials": 0
+    },
+    "example_claims": [
+      "C008100",
+      "C003243",
+      "C014083",
+      "C014259",
+      "C021440"
+    ]
+  }
+]

@@ -9,6 +9,7 @@ from .fixes import plan_fixes
 from .ledger import Ledger
 from .load import Dataset
 from .models import CheckResult
+from .overrides import NO_AUTO_FIX, describe
 from .rules import RuleContext, VisitIndex, check_claim, reported_issue
 
 
@@ -29,7 +30,10 @@ def run(dataset: Dataset, payer_rules: dict[str, dict]) -> list[CheckResult]:
         result = CheckResult(claim=claim, issues=issues, predicted_code=reported.code if reported else "")
 
         if claim.source == "to_check":
-            plan_fixes(result, ctx, ledger)
+            edit = dataset.edits.get(claim.claim_id)
+            if edit:
+                result.notes.append(f"Edited by a person: {describe(edit)}")
+            plan_fixes(result, ctx, ledger, allow_auto=not (edit or {}).get(NO_AUTO_FIX))
             note_on_correction(result, by_id)
             paid = not reported
         else:

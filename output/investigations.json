@@ -1,0 +1,560 @@
+[
+  {
+    "claim_id": "C011567",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-09"
+  },
+  {
+    "claim_id": "C001044",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-09"
+  },
+  {
+    "claim_id": "C009944",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-03"
+  },
+  {
+    "claim_id": "C001155",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-12"
+  },
+  {
+    "claim_id": "C011706",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-06"
+  },
+  {
+    "claim_id": "C009183",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-07"
+  },
+  {
+    "claim_id": "C015574",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-12"
+  },
+  {
+    "claim_id": "C013962",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-29"
+  },
+  {
+    "claim_id": "C008707",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-07-04"
+  },
+  {
+    "claim_id": "C012104",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-22"
+  },
+  {
+    "claim_id": "C012294",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-07"
+  },
+  {
+    "claim_id": "C004603",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-06-12"
+  },
+  {
+    "claim_id": "C007272",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-07-09"
+  },
+  {
+    "claim_id": "C004533",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-05"
+  },
+  {
+    "claim_id": "C017238",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-17"
+  },
+  {
+    "claim_id": "C001437",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-07-25"
+  },
+  {
+    "claim_id": "C014376",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-22"
+  },
+  {
+    "claim_id": "C014034",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-01"
+  },
+  {
+    "claim_id": "C015565",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-29"
+  },
+  {
+    "claim_id": "C010850",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-02"
+  },
+  {
+    "claim_id": "C008436",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-12"
+  },
+  {
+    "claim_id": "C006068",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-12"
+  },
+  {
+    "claim_id": "C006470",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-04"
+  },
+  {
+    "claim_id": "C003278",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-19"
+  },
+  {
+    "claim_id": "C011333",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-15"
+  },
+  {
+    "claim_id": "C013097",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-07"
+  },
+  {
+    "claim_id": "C017536",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-21"
+  },
+  {
+    "claim_id": "C016259",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-07-16"
+  },
+  {
+    "claim_id": "C009348",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-12"
+  },
+  {
+    "claim_id": "C015557",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-06-20"
+  },
+  {
+    "claim_id": "C017950",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-25"
+  },
+  {
+    "claim_id": "C007669",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-24"
+  },
+  {
+    "claim_id": "C015462",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-02"
+  },
+  {
+    "claim_id": "C007753",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-24"
+  },
+  {
+    "claim_id": "C005696",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-21"
+  },
+  {
+    "claim_id": "C006956",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-26"
+  },
+  {
+    "claim_id": "C000105",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-09"
+  },
+  {
+    "claim_id": "C013282",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-12"
+  },
+  {
+    "claim_id": "C010147",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-05"
+  },
+  {
+    "claim_id": "C008576",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-08-13"
+  },
+  {
+    "claim_id": "C018324",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-14"
+  },
+  {
+    "claim_id": "C018168",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-29"
+  },
+  {
+    "claim_id": "C012716",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-03"
+  },
+  {
+    "claim_id": "C015985",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-07"
+  },
+  {
+    "claim_id": "C012041",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-09"
+  },
+  {
+    "claim_id": "C007695",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-20"
+  },
+  {
+    "claim_id": "C000948",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-09"
+  },
+  {
+    "claim_id": "C001094",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-07-23"
+  },
+  {
+    "claim_id": "C009919",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-27"
+  },
+  {
+    "claim_id": "C018583",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-29"
+  },
+  {
+    "claim_id": "C002729",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-09-26"
+  },
+  {
+    "claim_id": "C008504",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-18"
+  },
+  {
+    "claim_id": "C004607",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-05"
+  },
+  {
+    "claim_id": "C003418",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY03",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-08-27"
+  },
+  {
+    "claim_id": "C018128",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-10-11"
+  },
+  {
+    "claim_id": "C018204",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-10-04"
+  },
+  {
+    "claim_id": "C004121",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-29"
+  },
+  {
+    "claim_id": "C013491",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-10-19"
+  },
+  {
+    "claim_id": "C017552",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-10-09"
+  },
+  {
+    "claim_id": "C005113",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY01",
+    "actual": "D99",
+    "payer_remark": "Denied - contact payer",
+    "date_of_service": "2026-09-18"
+  },
+  {
+    "claim_id": "C010183",
+    "group": "Generic D99 denials with no clear pattern",
+    "llm_guess": "The payer remarks are only 'Denied - contact payer' or 'Under review - see payer correspondence'. The claims are spread across all payers, services, agencies, modifiers and unit counts, so no unit-based rule fits. The likely cause is manual review, missing documentation or authorization problems that the engine cannot see.",
+    "payer": "PY02",
+    "actual": "D99",
+    "payer_remark": "Under review - see payer correspondence",
+    "date_of_service": "2026-10-18"
+  },
+  {
+    "claim_id": "C012372",
+    "group": "Engine predicted denial but claim was paid",
+    "llm_guess": "The engine predicted D02, but the payer paid the claim and gave no remark. This is probably a false positive from another rule, and a single case is not enough to define a new rule.",
+    "payer": "PY02",
+    "actual": "PAID",
+    "payer_remark": "-",
+    "date_of_service": "2026-09-30"
+  }
+]

@@ -5,21 +5,27 @@
     python run.py propose --without-contract-rules      # LLM groups unexplained denials
     python run.py explain C021766          # plain-English explanation for one claim
     python run.py bot                      # Discord bot (needs DISCORD_TOKEN)
+    python run.py edit C019037 units=16    # a person's correction, sent back through the agent
+    python run.py edit C019037 --clear     # remove a person's edits
 """
 
 import argparse
 from pathlib import Path
 
-from src import backtest, engine, outputs
+from src import backtest, engine, outputs, overrides
 from src.config import OUTPUT_DIR, load_env, load_payer_rules
 from src.load import load_dataset
 
 
 def run_pipeline(args):
-    dataset = load_dataset(Path(args.extra) if args.extra else None)
+    """Load (with every person's saved edits), check, and return (dataset, rules, results)."""
+    return run_pipeline_with(args, overrides.load())
+
+
+def run_pipeline_with(args, edits):
+    dataset = load_dataset(Path(args.extra) if args.extra else None, edits)
     rules = load_payer_rules(without_contract_rules=args.without_contract_rules)
-    results = engine.run(dataset, rules)
-    return dataset, rules, results
+    return dataset, rules, engine.run(dataset, rules)
 
 
 def cmd_check(args):
@@ -65,6 +71,35 @@ def cmd_explain(args):
     print(explain.explain(result, use_llm=not args.no_llm))
 
 
+def cmd_edit(args):
+    """The same loop as the Discord bot, from the command line: save the edit, re-run, report."""
+    if args.clear:
+        print(f"Cleared edits on {args.claim_id}" if overrides.clear(args.claim_id) else "No edits to clear")
+    else:
+        changes = overrides.parse(", ".join(args.changes)) if args.changes else {}
+        if not changes and not args.no_auto_fix:
+            raise SystemExit("Give changes like units=16 auth=AUTH10782, or --no-auto-fix, or --clear")
+        overrides.record(args.claim_id, changes, no_auto_fix=args.no_auto_fix)
+        print(f"Saved: {overrides.describe(overrides.load()[args.claim_id])}")
+
+    _, _, before = run_pipeline_with(args, {k: v for k, v in overrides.load().items() if k != args.claim_id})
+    dataset, _, results = run_pipeline(args)
+    old = {r.claim.claim_id: r for r in before if r.claim.source == "to_check"}
+    new = {r.claim.claim_id: r for r in results if r.claim.source == "to_check"}
+    held = [h for h in dataset.holds if h.claim_id == args.claim_id]
+    if held:
+        print(f"{args.claim_id} is on hold: " + "; ".join(f"{h.field} {h.value!r} ({h.reason})" for h in held))
+    elif args.claim_id in new:
+        r = new[args.claim_id]
+        print(f"{args.claim_id}: {r.outcome} {r.predicted_code}".rstrip())
+        for line in [f"  problem {i.code}: {i.message}" for i in r.issues] + [f"  {n}" for n in r.notes]:
+            print(line)
+    knock_on = [(cid, old[cid], r) for cid, r in new.items() if cid != args.claim_id and cid in old
+                and (old[cid].outcome, old[cid].predicted_code) != (r.outcome, r.predicted_code)]
+    for cid, o, r in knock_on:
+        print(f"  ledger knock-on: {cid} {o.outcome} {o.predicted_code}".rstrip() + f" -> {r.outcome} {r.predicted_code}")
+
+
 def cmd_bot(args):
     from src import bot
     bot.main(args)
@@ -74,15 +109,20 @@ def main():
     load_env()   # reads ANTHROPIC_API_KEY / DISCORD_TOKEN from .env, if present
     parser = argparse.ArgumentParser(description="Pre-submission claim checker")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name, func in [("check", cmd_check), ("propose", cmd_propose), ("explain", cmd_explain), ("bot", cmd_bot)]:
+    for name, func in [("check", cmd_check), ("propose", cmd_propose), ("explain", cmd_explain), ("bot", cmd_bot),
+                       ("edit", cmd_edit)]:
         p = sub.add_parser(name)
         p.set_defaults(func=func)
         p.add_argument("--extra", help="extra to-check claims CSV (e.g. demo/odd_claims.csv)")
         p.add_argument("--without-contract-rules", action="store_true",
                        help="drop contract rules (demo: let the LLM rediscover them)")
         p.add_argument("--no-llm", action="store_true", help="use template text instead of the LLM")
-        if name == "explain":
+        if name in ("explain", "edit"):
             p.add_argument("claim_id")
+        if name == "edit":
+            p.add_argument("changes", nargs="*", help="field=value pairs, e.g. units=16 auth=AUTH10782")
+            p.add_argument("--no-auto-fix", action="store_true", help="undo auto fixes on this claim")
+            p.add_argument("--clear", action="store_true", help="remove this claim's edits")
     args = parser.parse_args()
     args.func(args)
 

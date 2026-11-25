@@ -15,6 +15,7 @@ import pandas as pd
 
 from .config import DATA_DIR, MAPPINGS_FILE, load_yaml
 from .models import Authorization, Claim, Hold, Visit
+from .overrides import apply_to_row
 
 
 @dataclass
@@ -24,6 +25,7 @@ class Dataset:
     auths: dict[str, Authorization]
     visits: list[Visit]
     cleaning_log: Counter = field(default_factory=Counter)
+    edits: dict = field(default_factory=dict)  # a person's edits to to-check claims (see overrides.py)
 
     @property
     def held_claim_ids(self) -> set[str]:
@@ -38,8 +40,14 @@ def read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
-def load_dataset(extra_claims_file: Optional[Path] = None) -> Dataset:
-    """Load every file. `extra_claims_file` adds more to-check claims (used for the demo)."""
+def load_dataset(extra_claims_file: Optional[Path] = None, edits: Optional[dict] = None) -> Dataset:
+    """Load every file. `extra_claims_file` adds more to-check claims (used for the demo).
+
+    `edits` (claim_id -> field changes, from overrides.py) are a person's corrections to
+    to-check claims. They're applied to the raw row before cleaning, so they're checked
+    like any other value.
+    """
+    edits = edits or {}
     mappings = load_yaml(MAPPINGS_FILE)
     auths = load_authorizations()
     visits = load_visits()
@@ -59,12 +67,16 @@ def load_dataset(extra_claims_file: Optional[Path] = None) -> Dataset:
     claims, holds = [], []
     for source, frame in [("history", history), ("to_check", to_check)]:
         for row in frame.to_dict("records"):
+            edit = edits.get(str(row.get("claim_id", "")).strip()) if source == "to_check" else None
+            if edit:
+                row = apply_to_row(row, edit)
+                log["to-check claims edited by a person"] += 1
             claim, row_holds = cleaner.clean(row, source, all_ids)
             holds.extend(row_holds)
             if claim:
                 claims.append(claim)
 
-    return Dataset(claims=claims, holds=holds, auths=auths, visits=visits, cleaning_log=log)
+    return Dataset(claims=claims, holds=holds, auths=auths, visits=visits, cleaning_log=log, edits=edits)
 
 
 def load_authorizations() -> dict[str, Authorization]:

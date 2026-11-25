@@ -1,16 +1,27 @@
 """Discord bot: the human-in-the-loop layer (a stand-in for Slack).
 
 Channels (create them in your server with these exact names):
-  #claim-review         auto fixes (FYI, ❌ to undo) and claims that need a person
+  #claim-review         auto fixes (FYI, ❌ to undo) and claims that need a reviewer
   #data-issues          claims the cleaner couldn't read (✅ accepts the suggested spelling)
   #rule-proposals       LLM-proposed rules, tested on history (✅ adds to rules YAML)
   #needs-investigation  denials nobody can explain (reply with what you found)
 
+Claims flagged back to the submitter (D09 visit time, D03 filing limit) are not posted: they're
+shown to whoever submits the claim, not to a reviewer.
+
 Type `!post` (or `!post 10`) in any channel to post the latest results.
-Reply to a bot message to add a note. Every decision goes to output/decisions.jsonl.
+Each item is one short message with its reactions already added, so a reviewer just clicks:
+✅ accept / handled, ❌ disagree / undo, 🔍 full explanation in a thread (the LLM is only
+called on 🔍). Reply to a claim card with corrections (`units 16, auth AUTH10782`).
+Every decision goes to output/decisions.jsonl.
+
+Every action that changes a claim is sent back through the agent (overrides.py): the
+edit is saved, the whole timeline is re-checked (so the ledger and later claims update),
+and the bot replies with the new outcome. If the claim still fails, a fresh card is posted.
 """
 
 import asyncio
+import importlib
 import json
 import os
 from dataclasses import dataclass
@@ -19,13 +30,14 @@ from pathlib import Path
 
 import discord
 
-from . import backtest, engine, explain, propose
+from . import backtest, engine, explain, overrides, propose
 from .config import OUTPUT_DIR, add_contract_rule, load_payer_rules
 from .load import load_dataset
 from .mappings import add_spelling
 
 DECISIONS_FILE = OUTPUT_DIR / "decisions.jsonl"
-YES, NO = "✅", "❌"
+YES, NO, MORE = "✅", "❌", "🔍"
+SHORT = 110          # max characters for the one-line fix
 MAX_MESSAGE = 1900   # Discord's limit is 2000 characters
 
 
@@ -42,12 +54,31 @@ class Pipeline:
         self.extra = Path(extra_claims_file) if extra_claims_file else None
         self.refresh()
 
-    def refresh(self):
-        self.dataset = load_dataset(self.extra)
+    def refresh(self) -> dict[str, tuple]:
+        """Re-run the whole agent (with every person's edits) and return the to-check claims
+        whose outcome changed: {claim_id: (before, after)}, each "outcome code" or "held"."""
+        before = self.snapshot() if hasattr(self, "results") else {}
+        self.dataset = load_dataset(self.extra, overrides.load())
         self.rules = load_payer_rules()
         self.results = engine.run(self.dataset, self.rules)
         self.proposals = propose.load_json(propose.PROPOSALS_FILE, [])
         self.investigations = propose.load_json(propose.INVESTIGATIONS_FILE, [])
+        after = self.snapshot()
+        return {cid: (before.get(cid), after.get(cid)) for cid in before.keys() | after.keys()
+                if before and before.get(cid) != after.get(cid)}
+
+    def snapshot(self) -> dict[str, str]:
+        state = {h.claim_id: "held" for h in self.dataset.holds if h.source == "to_check"}
+        for r in self.results:
+            if r.claim.source == "to_check":
+                state[r.claim.claim_id] = f"{r.outcome} {r.predicted_code}".strip()
+        return state
+
+    def result(self, claim_id: str):
+        return next((r for r in self.results if r.claim.claim_id == claim_id), None)
+
+    def holds_for(self, claim_id: str):
+        return [h for h in self.dataset.holds if h.claim_id == claim_id]
 
     def to_check(self, outcome):
         return [r for r in self.results if r.claim.source == "to_check" and r.outcome == outcome]
@@ -58,51 +89,98 @@ class Pipeline:
 
 
 # --- Message formatting ------------------------------------------------------------------
+# Each item has a short card (posted) and a detail text (posted in a thread on 🔍).
+
+def clip(text: str, n: int = SHORT) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= n else text[: n - 1] + "…"
+
 
 def claim_header(result) -> str:
     c = result.claim
-    correction = f" (correction of {c.original_claim_id})" if c.frequency_code == "7" else ""
-    return f"{c.claim_id} · {c.payer_id} · {c.service_code} · DOS {c.date_of_service:%d %b}{correction}"
+    correction = f" · corrects {c.original_claim_id}" if c.frequency_code == "7" else ""
+    return f"**{c.claim_id}** · {c.payer_id} {c.service_code} · {c.date_of_service:%d %b}{correction}"
 
 
-def format_auto_fix(result) -> str:
-    title = "NOT SUBMITTED" if result.outcome == "do_not_submit" else "AUTO-FIXED"
-    return (f"🔧 **{claim_header(result)}: {title}**\n"
-            f"Would have been: DENIED, {result.predicted_code}\n"
-            f"{explain.explain(result)}\n"
-            f"React {NO} to undo before submission.")
+def short_fix(result) -> str:
+    """One line: the fix, from the rules engine (no LLM)."""
+    if not result.fixes:
+        return clip(result.issues[0].message) if result.issues else ""
+    first = result.fixes[0].description
+    if result.fixed_claim and result.fixed_claim.units != result.claim.units:
+        first = f"Units {result.claim.units} → {result.fixed_claim.units}. {first}"
+    more = f" (+{len(result.fixes) - 1} more)" if len(result.fixes) > 1 else ""
+    return clip(first, SHORT - len(more)) + more
 
 
-def format_needs_person(result) -> str:
-    return (f"⚠️ **{claim_header(result)}: NEEDS A PERSON**\n"
-            f"Predicted: DENIED, {result.predicted_code}\n"
-            f"{explain.explain(result)}\n"
-            f"React {YES} once handled, {NO} if you disagree with the flag, or reply with a note.")
+def card_needs_person(result) -> str:
+    return f"⚠️ {claim_header(result)} · {result.predicted_code}\n{short_fix(result)}"
 
 
-def format_hold(hold) -> str:
-    suggestion = f"\nClosest match: **{hold.suggestion}**" if hold.suggestion else ""
-    action = f"React {YES} to accept it, " if hold.suggestion else ""
-    return (f"🧩 **{hold.claim_id}**: {hold.field} `{hold.value}`: {hold.reason}{suggestion}\n"
-            f"{action}{NO} to send it back to the agency, or reply with the right value.")
+def card_auto_fix(result) -> str:
+    icon, label = ("🚫", "not sent") if result.outcome == "do_not_submit" else ("🔧", "auto-fixed")
+    return f"{icon} {claim_header(result)} · {label} {result.predicted_code}\n{short_fix(result)}"
 
 
-def format_proposal(p) -> str:
+def card_hold(hold) -> str:
+    guess = f" → **{hold.suggestion}**?" if hold.suggestion else f": {clip(hold.reason, 60)}"
+    return f"🧩 **{hold.claim_id}** · {hold.field} `{hold.value}`{guess}"
+
+
+def card_proposal(p) -> str:
+    e, title = p["evidence"], p["title"]
+    if not title.startswith(p["payer_id"]):
+        title = f"{p['payer_id']}: {title}"
+    return (f"💡 **{clip(title, 80)}**\n"
+            f"Back-test: +{e['newly_correct']} right, {e['new_false_denials']} paid claims wrongly denied")
+
+
+def card_investigation(inv) -> str:
+    return (f"❓ **{inv['claim_id']}** · {inv['payer']} · {inv['date_of_service']} · {inv['actual']} "
+            f"\"{clip(inv['payer_remark'], 50)}\"\nGuess: {clip(inv['llm_guess'], 90)}")
+
+
+def detail_claim(result) -> str:
+    """The full explanation (LLM, with template fallback) plus every problem and fix."""
+    lines = [explain.explain(result), ""]
+    lines += [f"• Problem {i.code}: {i.message}" for i in result.issues]
+    lines += [f"• Fix: {f.description} ({'automatic' if f.auto else 'needs a person'})" for f in result.fixes]
+    return "\n".join(lines)
+
+
+def detail_hold(hold) -> str:
+    return (f"{hold.reason}\n{YES} accepts the suggested value, {NO} sends it back to the agency, "
+            f"or reply to the card with the right value.")
+
+
+def detail_proposal(p) -> str:
     e, r = p["evidence"], p["rule"]
-    return (f"💡 **Proposed rule ({p['payer_id']}): {p['title']}**\n"
-            f"{r['description']} (`{r['type']} {r['value']}` from {r.get('dos_from') or 'always'}, code {r['code']})\n"
-            f"Why: {p['explanation']}\n"
-            f"Tested on history: fixes **{e['newly_correct']}** predictions, wrongly denies "
-            f"**{e['new_false_denials']}** paid claims, breaks {e['newly_wrong']} others.\n"
-            f"Examples: {', '.join(p['example_claims'])}\n"
-            f"React {YES} to add to the rules, {NO} to reject, or reply to ask for changes.")
+    return (f"{r['description']} (`{r['type']} {r['value']}` from {r.get('dos_from') or 'always'}, "
+            f"code {r['code']})\nWhy: {p['explanation']}\n"
+            f"Back-test: fixes {e['newly_correct']}, wrongly denies {e['new_false_denials']} paid, "
+            f"breaks {e['newly_wrong']} others.\nExamples: {', '.join(p['example_claims'])}\n"
+            f"Reply to the card to ask for changes.")
 
 
-def format_investigation(inv) -> str:
-    return (f"❓ **{inv['claim_id']}** · {inv['payer']} · DOS {inv['date_of_service']} · "
-            f"DENIED {inv['actual']} \"{inv['payer_remark']}\"\n"
-            f"No rule explains this. LLM's best guess ({inv['group']}): {inv['llm_guess']}\n"
-            f"React {YES} once resolved, {NO} if it can't be resolved, or reply with what you found.")
+def detail_investigation(inv) -> str:
+    return (f"Payer remark: \"{inv['payer_remark']}\"\nLLM's best guess ({inv['group']}): {inv['llm_guess']}\n"
+            f"Reply to the card with what you found.")
+
+
+# kind -> (card, detail, reactions added to the card)
+KINDS = {
+    "needs_person": (card_needs_person, detail_claim, (YES, NO, MORE)),
+    "auto_fix": (card_auto_fix, detail_claim, (NO, MORE)),
+    "data_issue": (card_hold, detail_hold, (NO, MORE)),   # plus ✅ when there's a suggestion
+    "proposal": (card_proposal, detail_proposal, (YES, NO, MORE)),
+    "investigation": (card_investigation, detail_investigation, (YES, NO, MORE)),
+}
+
+
+def reactions_for(kind: str, thing) -> tuple:
+    if kind == "data_issue" and thing.suggestion:
+        return (YES, NO, MORE)
+    return KINDS[kind][2]
 
 
 def item_label(item: Item) -> str:
@@ -132,9 +210,13 @@ class ReviewBot(discord.Client):
         super().__init__(intents=intents)
         self.pipeline = pipeline
         self.items: dict[int, Item] = {}   # message id -> what it's about
+        self.expanded: set[int] = set()    # cards whose 🔍 detail is already posted
 
     async def on_ready(self):
         print(f"Logged in as {self.user}. Type !post in a channel to post results.")
+        if explain.llm_available():
+            # The first `import anthropic` can take ~20s on Windows: do it now, not on the first 🔍.
+            await asyncio.to_thread(importlib.import_module, "anthropic")
 
     async def on_message(self, message: discord.Message):
         if message.author.bot:
@@ -149,45 +231,84 @@ class ReviewBot(discord.Client):
 
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         item = self.items.get(payload.message_id)
-        if item is None or payload.user_id == self.user.id or str(payload.emoji) not in (YES, NO):
+        emoji = str(payload.emoji)
+        if item is None or payload.user_id == self.user.id or emoji not in (YES, NO, MORE):
             return
         channel = self.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
-        await self.handle_reaction(message, item, str(payload.emoji), payload.member or payload.user_id)
+        if emoji == MORE:
+            await self.show_detail(message, item)
+        else:
+            await self.handle_reaction(message, item, emoji, payload.member or payload.user_id)
 
     # Posting
 
     async def post_all(self, guild: discord.Guild, limit: int):
         p = self.pipeline
-        await self.post(guild, "claim-review", "needs_person", p.to_check("needs_person")[:limit], format_needs_person)
-        auto = (p.to_check("auto_fixed") + p.to_check("do_not_submit"))[:limit]
-        await self.post(guild, "claim-review", "auto_fix", auto, format_auto_fix)
+        needs = p.to_check("needs_person")
+        auto = p.to_check("auto_fixed") + p.to_check("do_not_submit")
+        review = discord.utils.get(guild.text_channels, name="claim-review")
+        if review:
+            await review.send(f"Posting {min(limit, len(needs))} of {len(needs)} claims needing a person and "
+                              f"{min(limit, len(auto))} of {len(auto)} auto-handled. "
+                              f"{YES} handled · {NO} disagree/undo · {MORE} details")
+        await self.post(guild, "claim-review", "needs_person", needs[:limit])
+        await self.post(guild, "claim-review", "auto_fix", auto[:limit])
         held = [h for h in p.dataset.holds if h.source == "to_check"][:limit]
-        await self.post(guild, "data-issues", "data_issue", held, format_hold)
-        await self.post(guild, "rule-proposals", "proposal", p.proposals[:limit], format_proposal)
-        await self.post(guild, "needs-investigation", "investigation", p.investigations[:limit], format_investigation)
+        await self.post(guild, "data-issues", "data_issue", held)
+        await self.post(guild, "rule-proposals", "proposal", p.proposals[:limit])
+        await self.post(guild, "needs-investigation", "investigation", p.investigations[:limit])
 
-    async def post(self, guild, channel_name, kind, things, formatter):
+    async def post(self, guild, channel_name, kind, things):
         channel = discord.utils.get(guild.text_channels, name=channel_name)
         if channel is None or not things:
             return
         for thing in things:
-            text = await asyncio.to_thread(formatter, thing)   # may call the LLM
-            sent = await channel.send(text[:MAX_MESSAGE])
-            self.items[sent.id] = Item(kind, thing)
+            await self.post_one(channel, kind, thing)
+
+    async def post_one(self, channel, kind, thing):
+        sent = await channel.send(KINDS[kind][0](thing)[:MAX_MESSAGE])   # no LLM call, so posting is instant
+        self.items[sent.id] = Item(kind, thing)
+        for emoji in reactions_for(kind, thing):
+            await sent.add_reaction(emoji)
+
+    async def show_detail(self, message, item: Item):
+        """🔍: post the full explanation in a thread on the card (or a reply if threads aren't allowed)."""
+        if message.id in self.expanded:
+            return
+        self.expanded.add(message.id)
+        text = (await asyncio.to_thread(KINDS[item.kind][1], item.data))[:MAX_MESSAGE]   # may call the LLM
+        try:
+            thread = await message.create_thread(name=f"Details: {item_label(item)}"[:90])
+            await thread.send(text)
+        except discord.HTTPException:
+            await message.reply(text)
 
     # Reactions
 
     async def handle_reaction(self, message, item: Item, emoji: str, user):
         approve = emoji == YES
         if item.kind == "auto_fix" and not approve:
+            claim_id = item.data.claim.claim_id
+            overrides.record(claim_id, {}, no_auto_fix=True)
             log_decision(user, item, "undo")
-            await message.reply("Undone. This claim now goes to a person instead of being auto-fixed.")
+            await self.recheck(message, claim_id, "Undone: no auto fixes on this claim.")
 
         elif item.kind == "needs_person":
-            log_decision(user, item, "handled" if approve else "disagree")
-            await message.reply("Logged as handled." if approve else
-                                "Logged as a disagreement. Repeated disagreements flag the rule for review.")
+            result = item.data
+            if approve:
+                # ✅ = accept the suggested correction (if there is one) and send it back through the agent.
+                changes = overrides.changes_between(result.claim, result.suggested_claim)
+                if changes:
+                    overrides.record(result.claim.claim_id, changes)
+                log_decision(user, item, "accepted_fix" if changes else "handled", overrides.describe(changes))
+                prefix = (f"Applied {overrides.describe(changes)}." if changes else
+                          "Marked handled (no change to the claim, e.g. a visit was chased).")
+                await self.recheck(message, result.claim.claim_id, prefix)
+            else:
+                log_decision(user, item, "disagree")
+                await message.reply("Logged as a disagreement. Reply with the right values (e.g. `units 16`) "
+                                    "to send the claim back through the checker.")
 
         elif item.kind == "data_issue":
             hold = item.data
@@ -195,9 +316,7 @@ class ReviewBot(discord.Client):
                 value = hold.suggestion.split()[0]   # "PY01 (Northwind Health Plan)" -> "PY01"
                 add_spelling(hold.field, hold.value, value)
                 log_decision(user, item, "mapping_added", f"{hold.value} -> {value}")
-                await asyncio.to_thread(self.pipeline.refresh)
-                await message.reply(f"Added `{hold.value}` → `{value}` to mappings.yaml and re-ran. "
-                                    f"{self.outcome_text(hold.claim_id)}")
+                await self.recheck(message, hold.claim_id, f"Added `{hold.value}` → `{value}` to mappings.yaml.")
             elif not approve:
                 log_decision(user, item, "send_back")
                 await message.reply("Sent back to the agency to fix at the source.")
@@ -230,12 +349,25 @@ class ReviewBot(discord.Client):
 
         if item.kind == "data_issue":
             hold = item.data
-            if hold.field in ("payer", "service_code", "modifier"):
+            if hold.field in ("payer", "service_code", "modifier") and hold.value:
+                # A new spelling is worth remembering for every future claim.
                 add_spelling(hold.field, hold.value, text)
-                await asyncio.to_thread(self.pipeline.refresh)
-                await message.reply(f"Mapped `{hold.value}` → `{text}` and re-ran. {self.outcome_text(hold.claim_id)}")
+                await self.recheck(message, hold.claim_id, f"Mapped `{hold.value}` → `{text}`.")
+            elif hold.field in overrides.EDITABLE:
+                overrides.record(hold.claim_id, {hold.field: text})
+                await self.recheck(message, hold.claim_id, f"Set {hold.field} = `{text}` on this claim.")
             else:
                 await message.reply("Noted. The claim goes back to the agency with your correction.")
+
+        elif item.kind in ("needs_person", "auto_fix"):
+            claim_id = item.data.claim.claim_id
+            try:
+                changes = overrides.parse(text)
+                overrides.record(claim_id, changes)
+            except ValueError as e:
+                await message.reply(f"Couldn't read that: {e}. Example: `units 16, auth AUTH10782`.")
+                return
+            await self.recheck(message, claim_id, f"Applied {overrides.describe(changes)}.")
 
         elif item.kind == "investigation":
             with open(propose.FINDINGS_FILE, "a", encoding="utf-8") as f:
@@ -252,16 +384,57 @@ class ReviewBot(discord.Client):
             if new is None:
                 await message.reply("The revised proposal didn't improve the back-test, so it was dropped.")
             else:
-                sent = await message.channel.send(format_proposal(new)[:MAX_MESSAGE])
+                sent = await message.channel.send(card_proposal(new)[:MAX_MESSAGE])
                 self.items[sent.id] = Item("proposal", new)
+                for emoji in reactions_for("proposal", new):
+                    await sent.add_reaction(emoji)
         else:
             await message.reply("Noted.")
 
+    # Sending a claim back through the agent
+
+    async def recheck(self, message, claim_id: str, prefix: str):
+        """Re-run the agent after a person's action, report the claim's new outcome and any
+        other claims the ledger moved, and post a fresh card if it still needs someone."""
+        changed = await asyncio.to_thread(self.pipeline.refresh)
+        p = self.pipeline
+        lines = [f"{prefix} Re-checked **{claim_id}**: {self.outcome_text(claim_id)}"]
+        ripple = {cid: change for cid, change in changed.items() if cid != claim_id}
+        if ripple:
+            shown = [f"{cid} {old} → {new}" for cid, (old, new) in sorted(ripple.items())[:5]]
+            more = f" (+{len(ripple) - 5} more)" if len(ripple) > 5 else ""
+            lines.append(f"Ledger knock-on: {'; '.join(shown)}{more}")
+        await message.reply("\n".join(lines)[:MAX_MESSAGE])
+
+        result, holds = p.result(claim_id), p.holds_for(claim_id)
+        if holds:
+            for hold in holds:
+                await self.post_one(message.channel, "data_issue", hold)
+        elif result and result.outcome == "needs_person":
+            await self.post_one(message.channel, "needs_person", result)
+        elif result and result.outcome in ("auto_fixed", "do_not_submit"):
+            await self.post_one(message.channel, "auto_fix", result)
+
     def outcome_text(self, claim_id: str) -> str:
-        result = next((r for r in self.pipeline.results if r.claim.claim_id == claim_id), None)
+        p = self.pipeline
+        holds = p.holds_for(claim_id)
+        if holds:
+            return "still on hold: " + "; ".join(f"{h.field} `{h.value}` ({h.reason})" for h in holds)
+        result = p.result(claim_id)
         if result is None:
-            return f"{claim_id} is still on hold."
-        return f"{claim_id} now: **{result.outcome}** (predicted {result.predicted_status} {result.predicted_code})."
+            return "not found."
+        if result.outcome == "pass":
+            return "✅ passes every rule, ready to submit."
+        if result.outcome == "auto_fixed":
+            return f"🔧 auto-fixed ({', '.join(f.code for f in result.fixes)}), ready to submit."
+        if result.outcome == "do_not_submit":
+            return "🚫 don't submit."
+        codes = ", ".join(sorted({i.code for i in result.issues}))
+        if result.outcome == "return_to_submitter":
+            return (f"↩️ flagged back to the submitter: payer would deny {result.predicted_code} (breaks {codes}). "
+                    f"No reviewer needed.")
+
+        return f"⚠️ still needs a person: payer would deny {result.predicted_code} (breaks {codes}). New card below."
 
 
 def main(args):

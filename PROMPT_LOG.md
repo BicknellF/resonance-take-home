@@ -196,3 +196,148 @@ A running log of prompts given to Claude Code in this project, with a short summ
 - Created `.env` (git-ignored, empty `ANTHROPIC_API_KEY=` and `DISCORD_TOKEN=` for the user to fill in) and `.env.example` (safe-to-commit template).
 - Added `load_env()` in `src/config.py`, called at the start of `run.py`. It skips blank values, strips quotes, and never overrides variables already set in the shell. No new dependency.
 - Verified with a throwaway file, confirmed git ignores `.env`, and updated the README run instructions. Tests still pass.
+
+---
+
+## 16. 2026-11-25
+
+**Prompt:**
+> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& c:\Users\fredb\Desktop\resonance_take_home\.venv\Scripts\Activate.ps1)
+
+**Claude response:**
+- Explained this is VS Code's automatic virtualenv activation for a PowerShell terminal: it allows local scripts for that terminal session only, then activates `.venv`.
+- It's harmless and expected; once active, plain `python run.py ...` uses the project's packages.
+- Did not run it (activation in Claude's shell doesn't carry over) and did not read `.env`, so the keys stay private.
+
+---
+
+## 17. 2026-11-25
+
+**Prompt:**
+> please do a test run with discord intgration
+
+**Claude response:**
+- Started `run.py bot --extra demo/odd_claims.csv`. The token is valid but Discord rejected the connection with `PrivilegedIntentsRequired`: the Message Content intent (needed for `!post` and replies) isn't enabled in the developer portal.
+- Ran a scratch posting test without that intent: logged in as `Assistant#7193`, but the bot isn't in any server, so it posted 0 messages.
+- Checked the live LLM path: `run.py explain C021766` returned a real Haiku explanation (21 units vs 20 supported, plus amendment 3).
+- No project code changed. Next steps for the user: enable Message Content intent, invite the bot with Send Messages / Read History / Add Reactions, and create the 4 channels.
+
+---
+
+## 18. 2026-11-25
+
+**Prompt:**
+> try that again. I have added it to the server
+
+**Claude response:**
+- Reran the posting test: the bot joined the "Test" server and posted 8 messages (2 needs-person, 2 auto-fix, 2 data issues from `demo/odd_claims.csv`, 2 investigations) with live Haiku explanations.
+- `rule-proposals` channel doesn't exist, so proposals were skipped.
+- The interactive bot (`run.py bot`) still fails with `PrivilegedIntentsRequired`: Message Content Intent is still off in the developer portal, so `!post`, reactions-to-actions and replies can't be tested yet.
+- No project code changed.
+
+---
+
+## 19. 2026-11-25
+
+**Prompt:**
+> ok these discrod messages have too much info. please give me three mockups to make it shorter. we will ahve crazy review fatigue with the current messages. also it should post the message already with reactions so i just clikc them
+
+**Claude response:**
+- Offered three mockups (A: one-liner + 🔍 for details, B: one-liners plus a digest for auto-handled claims, C: grouped by fix with numbered reactions). User chose A.
+- Rewrote the formatting in `src/bot.py`: each item is a 1-2 line card built from rule-engine facts (no LLM), with ✅/❌/🔍 reactions added by the bot. 🔍 posts the full LLM explanation in a thread (falls back to a reply). `!post` starts with a one-line summary and legend.
+- Tested live: 9 cards posted to the Test server with reactions; a 🔍 detail thread was created on C019757.
+- Found the first `import anthropic` takes ~18s on this machine: the bot now pre-loads it at startup. Switched the explanation call in `src/explain.py` to `thinking: disabled` (1.1s vs 2.5s).
+- Tests pass (21). The interactive bot still needs Message Content Intent enabled in the developer portal to react to clicks.
+
+---
+
+## 20. 2026-11-25
+
+**Prompt:**
+> ok let's make a super clean readme. please include a confusion matrix and an explaination of our deterministic checks and when it gets handed of to the LLM.
+
+**Claude response:**
+- Re-ran `run.py check` and the tests (98.1% / 99.7%, 21 pass) so every number in the README is current.
+- Rewrote `README.md`: results, a full confusion matrix (11 columns) with an explanation of all 74 misses, and a paid vs denied summary.
+- Added a table of the deterministic checks per code and payer (EVV rounding, filing limits, bulletins, amendment 3), the precedence orders, and a table of auto vs person fixes with guardrails.
+- New "When the LLM gets involved" section: Haiku only rewords explanations (on 🔍 or `explain`), Sonnet proposes and revises rules from back-test misses, and every proposal is re-tested on history before a person approves it. The LLM never decides an outcome.
+- Updated the outdated "not tested live" assumption (Haiku and Discord posting have now been tested live) and added a code map.
+
+---
+
+## 21. 2026-11-25
+
+**Prompt:**
+> please generate a mermaid diagram of how teh workflwo looks liek from a human's perspective (reviewer and submitter) and another diagram fro how the logic works
+
+**Claude response:**
+- Created `DIAGRAMS.md` with two Mermaid diagrams.
+- Diagram 1 (sequence): the submitter, agent, Discord reviewer and payer. Covers holds in data-issues, clean passes, auto-fixes with ❌ undo, dropped duplicates, claim-review cards (✅ / reply / ❌ / 🔍), re-checking with knock-on effects, and the rule-proposal / investigation loop.
+- Diagram 2 (flowchart): edits → cleaning/holds → one timeline → every rule plus the ledger → payer precedence → ledger update loop → fix routing → back-test → Sonnet proposals → person approves into the YAML. Person decisions are yellow, automatic outcomes green.
+- Linked `DIAGRAMS.md` from `README.md`. Rendering wasn't checked locally (downloading mermaid-cli was blocked).
+
+---
+
+## 22. 2026-11-25
+
+**Prompt:**
+> please move them into README.md
+
+**Claude response:**
+- Replaced the ASCII overview at the top of "How it works" in `README.md` with the logic flowchart and its colour key.
+- Added the submitter/reviewer sequence diagram, with a short intro, at the start of "Human in the loop (Discord)".
+- Deleted `DIAGRAMS.md` and removed the README links to it.
+
+---
+
+## 23. 2026-11-25
+
+**Prompt:**
+> THe main benefit of this process is that humans no longer need to review every claim. we automatically check the determinstic rules and then only send a few to humans for review. what % does a human see now?
+
+**Claude response:**
+- Counted outcomes in `output/review_queue.csv` for the 546 to-check claims.
+- A person must act on 138 claims (25.3%). The other 408 (74.7%) need no one: 377 pass, 27 duplicates are held back automatically, and 4 are auto-fixed.
+- The 4 auto-fixes still post an undo card (no action needed), so a person *sees* at most 142 (26.0%).
+- Even the 138 come with the exact fix suggested, so most reviews are a single ✅ click.
+- No files changed apart from this log.
+
+---
+
+## 24. 2026-11-25
+
+**Prompt:**
+> please breakdown the categories of claims that need a human review
+
+**Claude response:**
+- Broke down the 138 "needs a person" claims from `output/review_queue.csv` by reported code, D01 sub-type and billed amount ($14,707.40 total).
+- Grouped by what the reviewer actually does: 64 one-click fixes that then pass (46%), 27 to chase outside the system (unverified visit 9, adjacent-day visit 5, auth exhausted 13), 14 with no visit (don't bill), 24 past the filing limit (write off / appeal), and 9 where the suggested fix clears one problem but a hidden one remains (6 past filing, 3 auth exhausted).
+- So only 64 of 546 (12%) are routine approvals, and about 74 claims (14%) are real exceptions needing outside work or a write-off decision.
+- No files changed apart from this log.
+
+---
+
+## 25. 2026-11-25
+
+**Prompt:**
+> Past the filing limit, and more units than the verified minutes support dont need human intervention. these would both just be shown to the person initially submitting hte form. what do we need to change to reflect this?
+
+**Claude response:**
+- Added a new outcome, `return_to_submitter`. `Fix` has a `submitter` flag, set on D09 (units over the verified visit time, with the exact units suggested) and D03 (past the filing limit, don't send). A claim goes back to the submitter only if every problem is a submitter or auto one. Any reviewer problem (e.g. D09 + D02) still sends it to a reviewer (`src/models.py`, `src/fixes.py`).
+- Outputs, explanations and the bot know the new route: summary line and `[submitter]` tag in `review_queue.csv` (`src/outputs.py`), outcome text (`src/explain.py`), and a new `#submitter` Discord channel where ✅ accepts the suggested units, a reply edits, and ❌ = not sent. Edits go back through the same re-check loop (`src/bot.py`).
+- Result: reviewer 138 → **92 claims (16.8%)**, 46 (8.4%) go back to the submitter (24 D03, 22 D09). 2 D09 claims stay with a reviewer because they also have an exhausted auth.
+- Tests: updated the unit-cut tests (D06/D10 still go to a reviewer, C019037 now goes to the submitter) and added two new ones. 30 pass, back-test unchanged at 98.1%.
+- Updated `README.md`: intro, results table with the new percentages, fix table (Submitter / Reviewer), guardrails, both diagrams, Discord channel table, and the test count.
+
+---
+
+## 26. 2026-11-25
+
+**Prompt:**
+> please remove the #submitter part of the bot. update the mermaid to reflect the flagging to the submitter part and then commit and push
+
+**Claude response:**
+- Removed the `#submitter` Discord channel from `src/bot.py` (card, reactions, posting, reply handling). Claims returned to the submitter are no longer posted. If a reviewer's edit leaves a claim with only submitter problems, the bot just says it's flagged back to the submitter.
+- Updated the sequence diagram in `README.md`: the checker flags the claim on submission, there's a "no reviewer involved" note, and the submitter either corrects units / the visit record and resubmits (re-checked, then sent) or writes it off.
+- Updated the logic flowchart: a blue "flagged to the submitter" node with dotted edges back to the to-check claims (resubmission) and to "not sent: written off". Added the colour key and removed `#submitter` from the Discord channel table.
+- Tests still pass (30). Committed and pushed to `origin/master`.
