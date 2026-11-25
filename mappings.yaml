@@ -1,0 +1,20 @@
+# Known spellings, used by the cleaner (src/load.py).
+# Anything NOT listed here is put on hold for a person, never guessed.
+# Approving a suggestion in the #data-issues Discord channel adds the new spelling here.
+
+payers:            # every spelling we accept, per payer ID (matched case-insensitively)
+  PY01: [PY01, NORTHWIND HP, Northwind Health Plan]
+  PY02: [PY02, Harbor Medicaid Plan, Harbor Medicaid]
+  PY03: [PY03, SUMMIT CARE, Summit Care Partners]
+
+service_codes: [T1019, T1005, S5125]
+
+modifiers: ["", U1, U2, U3]   # "" = no modifier
+
+date_formats:      # tried in order; a date matching none of these is held
+  - "%Y-%m-%d"     # 2026-09-13
+  - "%m/%d/%Y"     # 09/13/2026 (US order, confirmed from the data)
+
+aliases:           # other spellings approved by a person, e.g. service_code: {T1019-A: T1019}
+  service_code: {}
+  modifier: {}

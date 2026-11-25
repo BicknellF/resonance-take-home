@@ -1,0 +1,17 @@
+payer_id: PY02
+name: Harbor Medicaid Plan
+# Sources: payers/PY02_harbor_provider_manual.md, payers/PY02_harbor_bulletin_2026-08.md
+
+evv_rounding: whole_units   # "Only complete 15-minute increments ... may be billed"
+
+timely_filing: []           # "Harbor does not apply a timely filing limit"
+
+# Required modifier per service. The last matching entry wins.
+modifiers:
+  - {service: T1019, modifier: U2}
+  - {service: T1019, modifier: U3, dos_from: 2026-09-01, weekend_only: true}   # bulletin 2026-08
+
+daily_unit_max: 32          # across all services, per member per day
+contract_rules: []
+
+precedence: [D01, D09, D07, D08, D04, D05, D06, D02]

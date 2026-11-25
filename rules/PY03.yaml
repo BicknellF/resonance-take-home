@@ -1,0 +1,22 @@
+payer_id: PY03
+name: Summit Care Partners
+# Sources: payers/PY03_summit_provider_manual.md, plus contract amendment 3 (found in denial remarks)
+
+evv_rounding: whole_units   # 9.1 "partial units are not billable"
+
+timely_filing:
+  - {days: 60}              # 9.3
+
+modifiers: []
+daily_unit_max: null
+
+# Contract-specific rules (handbook 9.5). Not in the manual: discovered from payer remarks.
+contract_rules:
+  - id: summit-amendment-3
+    type: units_multiple_of
+    value: 4
+    dos_from: 2026-07-01
+    code: D10
+    description: "Contract amendment 3: services must be billed in whole hours"
+
+precedence: [D01, D07, D08, D10, D09, D02, D03, D05]

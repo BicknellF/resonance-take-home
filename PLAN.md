@@ -1,6 +1,6 @@
 # Plan: Pre-submission claim checker
 
-**Status:** draft for review (v2: adds the gaps found in the full-claims scan, plus human review of data the checks can't read)
+**Status:** draft for review (v3: deterministic fixes are applied automatically; people handle only ambiguous cases)
 
 ## 1. The problem in one line
 Billing teams at home-care agencies lose time and cash when payers deny claims. We check every claim **before it's
@@ -10,8 +10,11 @@ submitted**, predict whether it will be paid, and if not, say **why** and **how 
 for every flagged claim, and people approving anything high-stakes.
 
 ## 2. The big idea
-> **Rules check the claims. The AI helps maintain the rules and explain them. People approve, and handle anything the
-> rules can't.**
+> **Rules check the claims and apply the obvious fixes. The AI helps maintain the rules and explain them. People only
+> handle what's ambiguous.**
+
+- **If a problem has one clear, rule-based fix, the system applies it automatically.** People are only pulled in when
+  the answer isn't clear-cut (no fix exists, more than one fix is possible, or it needs someone outside the system).
 
 - **Checking a claim is deterministic.** It's the same answer every time, it can be audited, it's free to run, and it's
   fast. No LLM decides whether a claim gets paid.
@@ -20,7 +23,8 @@ for every flagged claim, and people approving anything high-stakes.
 - **The LLM does the jobs rules are bad at:**
   1. Reading payer remarks on denials we *didn't* predict, grouping them, and proposing a new rule.
   2. Turning a claim's problems and fixes into a plain-English message a billing person can act on.
-- **People stay in the loop** through a Discord bot (standing in for Slack). They approve with ✅ / ❌, or reply in text.
+- **People stay in the loop** through a Discord bot (standing in for Slack). They see every auto fix (and can undo it),
+  handle the ambiguous cases, and approve new rules with ✅ / ❌ or a text reply.
 
 ## 3. How it fits together
 
@@ -131,12 +135,25 @@ Fixing only the reported one gets the claim denied again for the next.
 | D04 | Wrong modifier | Change to U2 / U3 | Auto |
 | D05 | Original was paid | Don't send (double billing) | Auto |
 | | Original was denied | Resubmit as a correction (frequency 7 + original claim ID) | Auto |
-| D06 | Over Harbor's 32/day | Reduce units to what's left that day | Auto |
-| D07 / D08 | Missing or wrong authorization | Use the valid auth, e.g. "use AUTH11348" (one always exists in this data) | Auto |
-| D09 | Units over visit time | Reduce units to the verified amount, e.g. "14 units (3h 32m)" | Auto |
-| D10 | Summit not whole hours | Round down to a multiple of 4 | Auto |
+| D06 | Over Harbor's 32/day | Suggest units = what's left that day (or which service to reduce) | Person |
+| D07 / D08 | Missing or wrong authorization | Suggest the valid auth, e.g. "use AUTH11348" (one always exists in this data). **Never auto-applied**: it attaches the claim to a payer approval | Person |
+| D09 | Units over visit time | Suggest units = verified amount, e.g. "14 units (3h 32m)", or fix the visit record | Person |
+| D10 | Summit not whole hours | Suggest rounding down to a multiple of 4 | Person |
 
-- After applying the "Auto" fixes, **re-run the claim** to confirm it would now pass.
+**Auto fixes are applied without asking**, but only if all of these hold:
+1. The fix is deterministic and **unique**, and on the approved list below.
+   **Approved auto fixes (user decision, 2026-11-25):** D04 modifier, D05 drop a duplicate of a paid claim, D05 convert a
+   duplicate of a denied claim into a correction. **Unit cuts (D09/D06/D10) are never automatic** (revised 2026-11-25):
+   cutting gives up revenue and the visit record may be wrong, so a person decides. The system suggests the exact
+   number, worked out by applying every unit fix and re-checking (e.g. C019037: 20 → 16 units). **Authorization fixes (D07/D08) are never automatic.**
+2. It **never increases** the billed amount. Auto fixes only correct codes or stop a claim; they never change units.
+3. After **every** problem on the claim is fixed, the claim is **re-run and passes**.
+
+If any condition fails, or any problem on the claim is a "Person" fix, the whole claim goes to a person.
+
+- Auto-fixed claims are written to a new `corrected_claims.csv` (fixed claim, plus what changed and why). The source
+  files are never edited. In production this would write back to the agency's billing system.
+- Every auto fix is logged and posted to #claim-review as an FYI, so it can be audited and undone before submission.
 - **The LLM (Haiku 5.5) only writes the explanation.** It gets the claim facts, every problem and every fix, and
   writes 2–3 plain sentences. It can't change the decision. If the LLM fails, fall back to a template message.
 
@@ -170,18 +187,29 @@ React ✅ to map it to PY01, ❌ to reject, or reply with the right value.
 - ❌ the claim stays on hold and goes back to the agency to fix at the source.
 - A text reply gives the right value (e.g. "PY03", or "date is 9 March"). The bot applies it and re-runs the claim.
 
-**#claim-review**: one message per flagged claim, listing every problem:
+**#claim-review** has two kinds of message.
+
+*Auto-fixed (FYI, no action needed):*
 ```
-⚠️ C021766 · Summit · PT0xxx · T1005 · DOS 14 Aug (correction of C016750)
-Predicted: DENIED, D10. Problems found:
-  1. D10: 21 units is not whole hours. Fix: bill 20 units
-  2. D09: 21 units > 20 verified. Fix: bill 20 units (covers both)
-Previous problem (missing auth) is fixed ✓
-React ✅ to accept the fix, ❌ to override, or reply with a note.
+🔧 C020691 · Harbor · T1019 · DOS 14 Sep: AUTO-FIXED
+Would have been: DENIED, D04. Problem found and fixed:
+  1. D04: modifier U1 should be U2
+Changed: modifier U1 → U2. Re-checked: passes ✓
+React ❌ to undo before submission.
 ```
-- ✅ the fix (or the flag) is accepted and logged.
-- ❌ the reviewer disagrees, so the claim is marked "override" and logged as feedback.
-- A text reply is saved as a note. The bot confirms it got it.
+- No reaction is needed. ❌ undoes the fix, sends the claim to a person, and is logged as feedback. Repeated undos on
+  one rule suggest the rule or its fix is wrong.
+
+*Needs a person:*
+```
+⚠️ C018952 · Northwind · T1019 · DOS 22 Oct: NEEDS A PERSON
+Predicted: DENIED, D03 (filed 68 days after the visit; limit is 45)
+No automatic fix: the filing deadline has passed.
+React ✅ once handled, ❌ if you disagree with the flag, or reply with a note.
+```
+- The person makes any change in the billing system. When the corrected claim comes back in, it's re-checked and the
+  bot replies with ✓ fixed, or the remaining problems.
+- ❌ is logged as feedback. A text reply is saved as a note (e.g. "payer approved an exception by phone").
 
 **#rule-proposals**: one message per proposed rule:
 ```
@@ -205,8 +233,10 @@ React ✅ once resolved, ❌ if it can't be resolved, or reply with what you fou
 All decisions are written to a log file (who, what, when).
 
 ## 6. Outputs
-- `predictions.csv` (`claim_id,status,denial_code`) for the 546 claims to check. Claims on hold get
-  status `needs_data_fix`.
+- `predictions.csv` (`claim_id,status,denial_code`) for the 546 claims to check, **as submitted** (before fixes).
+  Claims on hold get status `needs_data_fix`.
+- `corrected_claims.csv`: auto-fixed claims with what changed, plus a summary (how many claims were auto-fixed, how many
+  need a person, and how many dollars were recovered vs written off).
 - A back-test report (accuracy and confusion matrix).
 - Discord messages for data issues, flagged claims, rule proposals and investigations.
 - A decision log.
@@ -235,7 +265,8 @@ tests/           # one test per rule, plus cleaning tests with odd inputs
 1. Load and clean (including holding unrecognised data), the rule engine and ledger, and the back-test. Iterate until
    accuracy is good. **The core works without any AI.**
 2. Write `predictions.csv`.
-3. Fix suggester: all problems, deterministic fixes, re-run check, then LLM wording. Corrected-claim check.
+3. Fix suggester: all problems, deterministic fixes, auto-apply with guardrails and re-check, `corrected_claims.csv`,
+   then LLM wording. Corrected-claim check.
 4. Unexplained-denial grouping, first by **leaving Summit amendment 3 out of the rules** to show the LLM rediscovering it.
 5. Discord bot (#claim-review first, then #data-issues, #rule-proposals, #needs-investigation).
 6. README and design diagram.

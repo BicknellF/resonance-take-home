@@ -1,0 +1,19 @@
+payer_id: PY01
+name: Northwind Health Plan
+# Sources: payers/PY01_northwind_provider_manual.md, payers/PY01_northwind_bulletin_2026-07.md
+
+# How verified EVV minutes convert to billable units (manual 4.3: the 8-minute rule).
+evv_rounding: eight_minute_rule
+
+# Days allowed between date of service and submission. The latest matching dos_from wins.
+timely_filing:
+  - {days: 30}                        # manual 6.1
+  - {days: 45, dos_from: 2026-08-01}  # bulletin 2026-07
+
+modifiers: []          # Northwind doesn't deny on modifiers
+daily_unit_max: null   # no daily cap
+contract_rules: []
+
+# When several rules break, the payer reports only the first code in this list.
+# Learned from claims history.
+precedence: [D01, D09, D07, D08, D02, D03, D05]

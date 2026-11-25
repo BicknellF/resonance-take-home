@@ -18,6 +18,14 @@ Number entries sequentially and separate them with `---`.
 ## Data handling rule
 - **Never modify the files in `Resonance - graduate preparation data/`.** All cleaning/normalisation happens at runtime when loading the data.
 
+## Code (implemented 2026-11-25)
+- Use the project virtualenv: `.venv/Scripts/python` (the Store Python's site-packages broke installing `anthropic`).
+- `run.py check | propose | explain <id> | bot`. Tests: `.venv/Scripts/python -m pytest -q`.
+- Layout: `src/load.py` (cleaning + holds), `rules.py` (one check per code), `ledger.py` (running state),
+  `engine.py` (timeline), `fixes.py` (approved auto fixes + guardrails), `backtest.py`, `explain.py` (Haiku),
+  `propose.py` (Sonnet), `bot.py` (Discord), `mappings.py`. Payer rules: `rules/PY0x.yaml`; spellings: `mappings.yaml`.
+- No API key or Discord token on this machine: LLM and bot paths are untested live (they fall back to templates).
+
 ---
 
 # Project context

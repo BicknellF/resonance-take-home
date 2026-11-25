@@ -94,3 +94,105 @@ A running log of prompts given to Claude Code in this project, with a short summ
 - Added the scan gaps: the engine records *all* problems per claim; a corrected-claim check (original fixed + no newly exposed issue); hidden-outcome flagging; and a per-situation fix table (auto vs person) with a re-run after auto fixes.
 - Added the confirmed precedence table and prototype accuracy (98.1% / 99.7%), and updated the diagram, outputs, build order and assumptions.
 - Noted the current data has no unreadable values after the known fixes, so the hold path will be demoed with a few deliberately odd claims.
+
+---
+
+## 8. 2026-11-25
+
+**Prompt:**
+> ok I have read the plan and all looks good. PLease go and read the docs first to confirm my undesrtanding. we have this claim review discord channel but this is just for observability reasons? the actual changes would ideally be made by the user inputting not the claims handler
+
+**Claude response:**
+- Checked against the brief ("check a claim… predict which claims will be denied, and suggest the fix") and billing_basics (the agency submits corrected claims): the assistant suggests, and the billing person makes the change in their own system.
+- Agreed the system should never edit claims itself, and suggested #claim-review is better framed as the billing team's work queue plus feedback channel than as pure observability.
+- Proposed re-wording ✅/❌ to "will fix / disagree", and closing the loop by re-checking the corrected claim when it comes back in; offered to update `PLAN.md`.
+
+---
+
+## 9. 2026-11-25
+
+**Prompt:**
+> the stakes are only high if the error is ambiguous. if it is somethign that is flagged by the deterministic checks and has a deterministic fix we should just apply that
+
+**Claude response:**
+- Agreed, and updated `PLAN.md` (v3): claims with only deterministic fixes are auto-fixed. People handle only ambiguous cases (no fix, more than one possible fix, or someone outside the system needed).
+- Added guardrails for auto fixes: the fix must be unique, must never increase the billed amount, and the claim must pass when re-run after *all* fixes; otherwise the whole claim goes to a person.
+- Auto-fixed claims go to a new `corrected_claims.csv` (source data untouched) and post as an FYI in #claim-review with ❌ to undo; undos are logged as rule feedback.
+- `predictions.csv` stays "as submitted" (before fixes) so it can still be compared; added an auto-fixed vs needs-a-person vs dollars summary.
+
+---
+
+## 10. 2026-11-25
+
+**Prompt:**
+> please list all of the potential auto fixes. swapping auhorisations seems dangerous so let me decide now which ones can acually be auto fixed
+
+**Claude response:**
+- Listed 8 candidate auto fixes with to-check claim counts and risk: D04 modifier, D09 cut to verified, D10 whole hours, D06 daily cap, D05 drop (original paid), D05 convert to correction (original denied), D07 fill missing auth, D08 swap wrong auth.
+- The user chose: all unit/modifier fixes and both duplicate fixes are auto; authorization fixes (D07/D08) are **never** auto (a person gets the valid auth as a suggestion).
+- Updated `PLAN.md`: an approved auto-fix list in the guardrails, and the D07/D08 row in the fix table set to "Person".
+
+---
+
+## 11. 2026-11-25
+
+**Prompt:**
+> ok the plan looks good please implement it. keep the code clean and easy to undesrtand so that I can review it
+
+**Claude response:**
+- Implemented the plan: `run.py` CLI plus `src/` modules (load/clean with holds, rules, ledger, engine, fixes, backtest, outputs, explain via Haiku 5.5, propose via Sonnet 5.5, Discord bot, mappings); payer rules in `rules/PY0x.yaml`; spellings in `mappings.yaml`; a project `.venv` (the system Python's anthropic install was broken).
+- Back-test: 98.1% exact (99.7% excluding generic D99s), matching the prototype. To-check: 377 pass, 56 auto-fixed, 27 don't submit, 86 need a person, plus outputs in `output/`.
+- Fixed a bug found while checking the output: a fix can expose a new issue (cutting to visit time breaks Summit's whole hours), so fixes now repeat until the claim passes (C019037: 20 → 16 units).
+- Added `demo/odd_claims.csv` for the hold path and 20 tests (cleaning, rules, back-test, ledger, precedence, auto-fix guardrails, proposal testing with a faked LLM, spelling approval).
+- Wrote `README.md`. Flagged that no API key or Discord token was available, so the LLM and bot are untested live (they fall back to templates).
+
+---
+
+## 12. 2026-11-25
+
+**Prompt:**
+> explain theat claim cutting logic. please explain all options fo that and te trade offs
+
+**Claude response:**
+- Explained the current logic: cut units to the largest value that passes every rule (min of the verified-time cap and the daily-cap remainder, then round down to whole hours for Summit), re-check, and repeat.
+- Quantified it: 52 claims cut, 157 units, $837.80 given up. Most cuts are 1–4 units; 8 cuts are over 25% (e.g. C021393 20 → 8 from the Harbor daily cap).
+- Set out the options and trade-offs: cut to max compliant (current), round up (rejected: overbilling), never auto-cut, cut with a size threshold, and D06 choices of which claim absorbs the cap (first-come vs highest-rate vs person).
+- Recommended keeping round-down plus a threshold (large cuts go to a person), and asked the user to decide before changing code.
+
+---
+
+## 13. 2026-11-25
+
+**Prompt:**
+> ok these seem ambiguous so it's definitely worht sending to a human. please use option C and implement
+
+**Claude response:**
+- Implemented option C: unit cuts (D09 visit time, D06 daily cap, D10 whole hours) are no longer automatic. Only the modifier (D04) and duplicate (D05) fixes stay automatic.
+- A person still gets the exact suggested number: `suggest_correction()` applies every unit fix, re-checks, and adds a note (e.g. C019037 "units 20 -> 16 ($76.80); would then pass"). Nothing is changed automatically.
+- Refactored the repeat-until-clean loop into `apply_fixes()`, shared by the auto path and the suggestion path.
+- New to-check numbers: 377 pass, 4 auto-fixed, 27 don't submit, 138 need a person. The back-test is unchanged (98.1%).
+- Updated the tests (21 pass: unit cuts always go to a person, auto fixes never change units), `PLAN.md` and `README.md`.
+
+---
+
+## 14. 2026-11-25
+
+**Prompt:**
+> where is the .env?
+
+**Claude response:**
+- There is no `.env` file. The code reads `ANTHROPIC_API_KEY` and `DISCORD_TOKEN` straight from environment variables (`os.environ` in `src/explain.py` and `src/bot.py`); nothing loads a `.env`.
+- `.env` is already in `.gitignore`, so one would never be committed.
+- Offered to add `.env` support (a `.env.example` template plus loading it at startup) or to explain how to set the variables in the shell.
+
+---
+
+## 15. 2026-11-25
+
+**Prompt:**
+> please create the .env and i can add my keys
+
+**Claude response:**
+- Created `.env` (git-ignored, empty `ANTHROPIC_API_KEY=` and `DISCORD_TOKEN=` for the user to fill in) and `.env.example` (safe-to-commit template).
+- Added `load_env()` in `src/config.py`, called at the start of `run.py`. It skips blank values, strips quotes, and never overrides variables already set in the shell. No new dependency.
+- Verified with a throwaway file, confirmed git ignores `.env`, and updated the README run instructions. Tests still pass.

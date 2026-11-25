@@ -1,0 +1,5 @@
+claim_id,agency_id,payer,patient_id,service_code,date_of_service,submitted_date,units,auth_id,modifier,frequency_code,original_claim_id,billed_amount
+C090001,AG008,Northwnd Health,PT0251,T1019,2026-10-22,2026-10-29,9,AUTH13317,,1,,54.9
+C090002,AG007,PY01,PT0085,T1005,13-09-2026,2026-09-25,14,AUTH11114,,1,,67.2
+C090003,AG001,SUMMIT CARE,PT0183,T1019-A,2026-10-22,2026-11-10,32,AUTH12466,,1,,195.2
+C090004,AG002,PY03,PT0276,T1019,02/30/2026,2026-10-24,20,AUTH99999,,1,,122.0
