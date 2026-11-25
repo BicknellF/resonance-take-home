@@ -13,13 +13,15 @@ from .overrides import NO_AUTO_FIX, describe
 from .rules import RuleContext, VisitIndex, check_claim, reported_issue
 
 
-def run(dataset: Dataset, payer_rules: dict[str, dict]) -> list[CheckResult]:
+def run(dataset: Dataset, payer_rules: dict[str, dict], disabled: frozenset = frozenset()) -> list[CheckResult]:
     """Check every claim. Returns one CheckResult per claim, in submission order.
 
     For the ledger, history claims use their KNOWN outcome (what actually happened);
     to-check claims use the PREDICTED outcome as submitted (before any fixes).
+    `disabled` switches denial codes off (ablation study only).
     """
-    ctx = RuleContext(visits=VisitIndex(dataset.visits), auths=dataset.auths, payer_rules=payer_rules)
+    ctx = RuleContext(visits=VisitIndex(dataset.visits), auths=dataset.auths, payer_rules=payer_rules,
+                      disabled=frozenset(disabled))
     ledger = Ledger(dataset.auths)
     by_id = {c.claim_id: c for c in dataset.claims}
     results = []

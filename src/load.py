@@ -40,12 +40,13 @@ def read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
-def load_dataset(extra_claims_file: Optional[Path] = None, edits: Optional[dict] = None) -> Dataset:
+def load_dataset(extra_claims_file: Optional[Path] = None, edits: Optional[dict] = None,
+                 drop_duplicate_rows: bool = True) -> Dataset:
     """Load every file. `extra_claims_file` adds more to-check claims (used for the demo).
 
     `edits` (claim_id -> field changes, from overrides.py) are a person's corrections to
     to-check claims. They're applied to the raw row before cleaning, so they're checked
-    like any other value.
+    like any other value. `drop_duplicate_rows=False` is only for the ablation study.
     """
     edits = edits or {}
     mappings = load_yaml(MAPPINGS_FILE)
@@ -55,7 +56,8 @@ def load_dataset(extra_claims_file: Optional[Path] = None, edits: Optional[dict]
 
     history = read_csv(DATA_DIR / "claims_history.csv")
     before = len(history)
-    history = history.drop_duplicates()
+    if drop_duplicate_rows:
+        history = history.drop_duplicates()
     log["exact duplicate history rows dropped"] = before - len(history)
 
     to_check = read_csv(DATA_DIR / "claims_to_check.csv")

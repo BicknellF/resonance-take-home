@@ -7,6 +7,7 @@
     python run.py bot                      # Discord bot (needs DISCORD_TOKEN)
     python run.py edit C019037 units=16    # a person's correction, sent back through the agent
     python run.py edit C019037 --clear     # remove a person's edits
+    python run.py ablate                   # accuracy with parts of the agent switched on/off
 """
 
 import argparse
@@ -100,6 +101,15 @@ def cmd_edit(args):
         print(f"  ledger knock-on: {cid} {o.outcome} {o.predicted_code}".rstrip() + f" -> {r.outcome} {r.predicted_code}")
 
 
+def cmd_ablate(args):
+    from src import ablation
+    text = ablation.run()
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    (OUTPUT_DIR / "ablation.md").write_text(text + "\n", encoding="utf-8")
+    print(text)
+    print("\nwrote output/ablation.md")
+
+
 def cmd_bot(args):
     from src import bot
     bot.main(args)
@@ -110,7 +120,7 @@ def main():
     parser = argparse.ArgumentParser(description="Pre-submission claim checker")
     sub = parser.add_subparsers(dest="command", required=True)
     for name, func in [("check", cmd_check), ("propose", cmd_propose), ("explain", cmd_explain), ("bot", cmd_bot),
-                       ("edit", cmd_edit)]:
+                       ("edit", cmd_edit), ("ablate", cmd_ablate)]:
         p = sub.add_parser(name)
         p.set_defaults(func=func)
         p.add_argument("--extra", help="extra to-check claims CSV (e.g. demo/odd_claims.csv)")

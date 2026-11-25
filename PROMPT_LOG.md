@@ -341,3 +341,40 @@ A running log of prompts given to Claude Code in this project, with a short summ
 - Updated the sequence diagram in `README.md`: the checker flags the claim on submission, there's a "no reviewer involved" note, and the submitter either corrects units / the visit record and resubmits (re-checked, then sent) or writes it off.
 - Updated the logic flowchart: a blue "flagged to the submitter" node with dotted edges back to the to-check claims (resubmission) and to "not sent: written off". Added the colour key and removed `#submitter` from the Discord channel table.
 - Tests still pass (30). Committed and pushed to `origin/master`.
+
+---
+
+## 27. 2026-11-25
+
+**Prompt:**
+> ok please also make an ablation table in the readme that explains how accurate the agent is with more parts of it switched on
+
+**Claude response:**
+- Added `src/ablation.py` and `run.py ablate` (writes `output/ablation.md`). Small switches support it: `engine.run(..., disabled=)` / `RuleContext.disabled` turn denial codes off, and `load_dataset(drop_duplicate_rows=False)`. The defaults are unchanged and the back-test is still 98.1%.
+- Cumulative table: all paid 71.3% → manual rules 89.3% (67 false denials) → bulletins 91.5% (0 false denials) → amendment 3 92.1% → ledger (history only) 95.6% → one timeline 95.8% → learned precedence **98.1%**.
+- Leave-one-out table: biggest drops come from the PY01 8-minute rule (−14.8 pts, 439 paid claims wrongly denied), the stateful ledger (−4.4), precedence (−2.2), bulletins (−2.1), amendment 3 (−0.9), not dropping duplicate rows (−0.8, 34 false D05s) and the timeline (−0.3).
+- Added an "Ablation" section to `README.md` under Results with both tables, takeaways and the caveat that rules were learned on the same history. Also updated the run commands, outputs table and code map. 30 tests pass.
+
+---
+
+## 28. 2026-11-25
+
+**Prompt:**
+> the mermaid graphs are far too detailed. what would one level of abstraction up look like?
+
+**Claude response:**
+- Drafted two simpler Mermaid diagrams in chat (5–8 nodes each, left to right).
+- Workflow: submitter → claim checker → payer (pass / auto-fix), back to the submitter (units, filing date), or to a reviewer who approves or edits.
+- Logic: data → clean → check every rule with a running ledger → outcome (send / submitter / reviewer), a reviewer edit loop, and a dotted back-test → LLM rule proposal loop.
+- Listed what was dropped (channels, file names, codes, holds, 🔍, ledger internals). No files changed apart from this log.
+
+---
+
+## 29. 2026-11-25
+
+**Prompt:**
+> ok please replace the README diagrams with those then commit and push so that I can review on github
+
+**Claude response:**
+- Replaced both Mermaid diagrams in `README.md` with the simplified versions, plus a one-line note on the ledger under the logic diagram.
+- Committed everything outstanding (simplified diagrams, plus the ablation study: `src/ablation.py`, `run.py ablate`, `output/ablation.md`, README ablation section) and pushed to `origin/master`.

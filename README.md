@@ -63,74 +63,69 @@ All 74 misses are explained:
 Paid vs denied only: 1,038 of 1,099 denials caught, and 1 false alarm in 2,731 paid claims.
 Full report, including a before/after September split: `output/backtest_report.md`.
 
+### Ablation: what each part of the agent adds
+
+Same back-test, re-run with parts of the agent switched on or off (`run.py ablate`, written to `output/ablation.md`).
+"Denials caught" means a denied claim was predicted denied (any code).
+
+#### Cumulative: adding one part at a time
+
+| Agent | Exact match | Change | Excl. generic D99s | Denials caught | Paid claims wrongly denied |
+|---|---:|---:|---:|---:|---:|
+| **Predict every claim paid**<br><sub>baseline, no rules</sub> | 71.3% |  | 72.5% | 0.0% | 0 / 2,731 |
+| **+ Payer manual rules, stateless**<br><sub>D01 EVV, D03 filing, D04 modifier, D07/D08 auth, D09 units vs minutes</sub> | 89.3% | +18.0 pts | 90.8% | 78.6% | 67 / 2,731 |
+| **+ Payer bulletins**<br><sub>Northwind 45-day limit from Aug, Harbor weekend U3 from Sep</sub> | 91.5% | +2.1 pts | 92.9% | 77.1% | 0 / 2,731 |
+| **+ Summit amendment 3 (from denial remarks)**<br><sub>D10: whole hours from July</sub> | 92.1% | +0.6 pts | 93.6% | 79.9% | 0 / 2,731 |
+| **+ Stateful ledger, history claims only**<br><sub>D02 auth units, D05 duplicates, D06 Harbor daily cap</sub> | 95.6% | +3.6 pts | 97.2% | 93.5% | 0 / 2,731 |
+| **+ One timeline with the to-check claims**<br><sub>to-check claims draw on the same auths</sub> | 95.8% | +0.2 pts | 97.4% | 94.4% | 1 / 2,731 |
+| **+ Payer precedence learned from history**<br><sub>= the full agent</sub> | 98.1% | +2.2 pts | 99.7% | 94.4% | 1 / 2,731 |
+
+#### Leave one out: the full agent with one part switched off
+
+| Agent | Exact match | Change | Excl. generic D99s | Denials caught | Paid claims wrongly denied |
+|---|---:|---:|---:|---:|---:|
+| **Full agent** | 98.1% |  | 99.7% | 94.4% | 1 / 2,731 |
+| **Without dropping the 32 duplicate history rows** | 97.2% (3,862 rows) | -0.8 pts | 98.8% | 94.5% | 34 / 2,758 |
+| **Without Northwind 8-minute rule (whole units instead)** | 83.2% | -14.8 pts | 84.6% | 95.7% | 439 / 2,731 |
+| **Without payer bulletins** | 96.0% | -2.1 pts | 97.5% | 94.4% | 68 / 2,731 |
+| **Without Summit amendment 3** | 97.2% | -0.9 pts | 98.7% | 91.8% | 1 / 2,731 |
+| **Without to-check claims in the timeline** | 97.8% | -0.3 pts | 99.4% | 93.5% | 0 / 2,731 |
+| **Without stateful ledger (D02, D05, D06)** | 93.6% | -4.4 pts | 95.1% | 79.9% | 0 / 2,731 |
+| **Without learned precedence (D01, D02, ... order)** | 95.8% | -2.2 pts | 97.4% | 94.4% | 1 / 2,731 |
+
+What this shows:
+- **The payer manuals do most of the work** (71% → 89%), but read literally they wrongly deny 67 paid claims. The
+  **bulletins** (Northwind's 45-day limit, Harbor's weekend U3) remove every one of those false denials.
+- **The stateful ledger is the biggest single addition after the manuals** (+3.6 pts): authorization drawdown, duplicates and
+  Harbor's daily cap can't be checked one claim at a time. Taking it out of the full agent drops denials caught from
+  94% to 80%.
+- **Learned precedence adds 2.2 pts without catching a single extra denial.** It only fixes *which* code is reported
+  when a claim breaks several rules.
+- **Small details matter a lot.** Using whole units instead of Northwind's 8-minute rule would wrongly deny 439 paid
+  claims (−14.8 pts). Not dropping the 32 duplicate export rows creates 34 false duplicate (D05) denials.
+- **Putting the to-check claims in the timeline** is small overall (+0.2 to 0.3 pts), but it explains D02 denials that
+  history alone can't. It also costs the one false denial (C012372, the "hidden outcome").
+- Caveat: every rule and the precedence were learned from this same history, so this shows what each part
+  contributes, not how well it does on unseen data.
+
 ---
 
 ## How it works
 
 ```mermaid
-flowchart TD
-    subgraph IN["Inputs (read-only)"]
-        H[claims_history.csv]
-        C[claims_to_check.csv]
-        AU[authorizations.csv]
-        E[evv_visits.csv]
-    end
-    CFG["rules/PY0x.yaml + mappings.yaml"]
-    ED["claim_edits.json (people's edits)"]
-
-    H & C --> APPLY["Apply people's edits to the raw rows"]
-    ED --> APPLY
-    APPLY --> CLEAN["Clean: payer names, dates, codes, modifiers, drop 32 duplicate rows"]
-    CFG --> CLEAN
-    CLEAN -->|unrecognised value| HOLD["HOLD, never guessed"] --> DI(["data-issues: person"])
-    CLEAN --> TL["One timeline: both files sorted by submitted_date, ties by claim_id"]
-
-    TL --> NEXT{"Next claim"}
-    NEXT --> RULES["Run every rule"]
-    AU --> RULES
-    E --> RULES
-    CFG --> RULES
-    LEDGER[("Ledger: auth units used, Harbor daily units, claims seen")] --> RULES
-
-    RULES --> R1["D01 verified visit · D09 units vs minutes · D07 auth present · D08 auth matches · D03 timely filing · D04 Harbor modifier · D10 Summit whole hours"]
-    RULES --> R2["Stateful: D02 auth units left · D05 duplicate · D06 Harbor 32/day"]
-    R1 & R2 --> PREC["Payer precedence picks ONE reported code, all problems kept"]
-
-    PREC --> OUT{"Outcome"}
-    OUT -->|history row| REAL["Use the real outcome"]
-    OUT -->|to-check row| PRED["Use the predicted outcome"]
-    REAL & PRED --> UPD["Update ledger: every claim → claims seen. Paid only → draw auth units and daily total"]
-    UPD --> LEDGER
-    UPD --> NEXT
-
-    PRED --> FIX{"Fixes"}
-    FIX -->|no problems| PASS(["Pass as submitted"])
-    FIX -->|"every problem auto-fixable, amount doesn't rise, passes re-check"| AUTO(["Auto-fixed"])
-    FIX -->|duplicate of a paid claim| DROP(["Don't submit"])
-    FIX -->|"only D09 visit time / D03 filing limit (+ auto fixes)"| SUB(["Flagged to the submitter on submission, units suggested"])
-    FIX -->|"costs revenue or needs judgement"| REV(["claim-review: reviewer, exact fix suggested"])
-    SUB -.->|"resubmits with corrected units or visit record"| C
-    SUB -.->|past the filing limit| WO(["Not sent: written off"])
-    REV -->|"✅ / reply / ❌"| ED
-
-    REAL --> BT["Back-test: predicted vs actual"]
-    BT -->|misses| LLM["Sonnet proposes rules from payer remarks"]
-    LLM --> TEST["Re-test proposal on full history"]
-    TEST --> RP(["rule-proposals: person"])
-    RP -->|✅| CFG
-    BT -->|no pattern| INV(["needs-investigation: person"])
-
-    classDef person fill:#fde68a,stroke:#b45309,color:#000
-    classDef ok fill:#bbf7d0,stroke:#15803d,color:#000
-    class DI,REV,RP,INV person
-    classDef submitter fill:#bfdbfe,stroke:#1d4ed8,color:#000
-    class PASS,AUTO ok
-    class SUB,WO submitter
+flowchart LR
+    D[(Claims, auths,<br>EVV visits)] --> C[Clean at runtime]
+    C --> E["Check every rule<br>with a running ledger"]
+    E --> O{Outcome}
+    O -->|pass / auto-fix| P([Send])
+    O -->|simple fix| S([Submitter])
+    O -->|judgement| R([Reviewer])
+    R -->|edit| E
+    E -.->|back-test misses| L[LLM proposes rules] -.->|approved| E
 ```
 
-Yellow = a reviewer decides. Blue = flagged to the submitter when they submit (no reviewer). Green = goes out without
-anyone. The ledger loop is the stateful part: each claim's
-outcome changes what the next claim on the same authorization, member-day or patient-service-date can get.
+The ledger is the stateful part: each claim's outcome changes what the next claim on the same authorization,
+member-day or patient-service-date can get. The sections below go through each step.
 
 ### 1. Load and clean (at runtime, source files never touched)
 
@@ -232,70 +227,12 @@ team lead working in Discord (standing in for Slack). Nothing goes to the payer 
 rules or a person has decided what to do with it.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Submitter (agency billing)
-    participant A as Claim checker (agent)
-    actor R as Reviewer (Discord)
-    participant P as Payer
-
-    S->>A: Drop in a batch of claims (CSV export)
-    A->>A: Clean at runtime, replay the timeline, run every rule
-
-    alt Value it doesn't recognise (payer name, date, code)
-        A->>R: Card in data-issues with the nearest known value
-        R->>A: ✅ add the mapping, or reply with the right value
-        A->>A: Save to mappings.yaml / claim_edits.json and re-check
-    end
-
-    alt Passes every rule
-        A->>S: Ready to send
-        S->>P: Submit as is
-    else Safe auto fix (modifier, duplicate, frequency 7)
-        A->>A: Apply the fix, re-check, guardrails hold
-        A->>R: Card in claim-review: "auto-fixed, ❌ to undo"
-        A->>S: Corrected claim ready
-        S->>P: Submit corrected claim
-    else Duplicate of a paid claim
-        A->>S: Don't send (double billing)
-    else Only submitter problems (units over visit time, past filing limit)
-        A->>S: Flagged on submission: "verified visit supports 16 units" or "past the filing limit"
-        Note over S,R: No reviewer involved
-        alt Units over the visit time
-            S->>S: Correct the units, or fix the visit record
-            S->>A: Resubmit the corrected claim
-            A->>A: Re-check the whole timeline
-            A->>S: Passes, ready to send
-            S->>P: Submit
-        else Past the filing limit
-            S->>S: Don't send, write off
-        end
-    else Needs a reviewer (unit caps, auth, missing visit)
-        A->>R: Card in claim-review: every problem + exact fix suggested
-        opt Wants it in plain English
-            R->>A: 🔍
-            A-->>R: 2–3 sentence explanation (Haiku)
-        end
-        alt Accept the suggestion
-            R->>A: ✅
-        else Different fix
-            R->>A: Reply e.g. "units 16, auth AUTH10782"
-        else Can't fix here (visit missing, auth used up)
-            R->>S: Chase the caregiver / request a new auth
-            R->>A: ❌ don't send for now
-        end
-        A->>A: Apply the edit to the raw row and re-check the whole timeline
-        A-->>R: Knock-on effects (e.g. a later claim now hits D02)
-        A->>R: Still failing? A fresh card, loop until it passes or is dropped
-        A->>S: Fixed claim ready
-        S->>P: Submit
-    end
-
-    Note over A,R: Periodically, after the back-test
-    A->>R: Card in rule-proposals: LLM rule + its history test
-    R->>A: ✅ write it to the payer YAML, ❌ reject, or reply to revise
-    A->>R: Unexplained denials to needs-investigation
-    R->>A: Reply with what was found (fed into the next round)
+flowchart LR
+    S([Submitter]) -->|submits claims| A[Claim checker]
+    A -->|passes or safely auto-fixed| P([Payer])
+    A -->|"submitter can fix it<br>(units, filing date)"| S
+    A -->|needs judgement| R([Reviewer])
+    R -->|approves or edits the fix| A
 ```
 
 `run.py bot` posts short cards with ✅ / ❌ / 🔍 reactions already added, so a reviewer only clicks:
@@ -334,6 +271,7 @@ python -m venv .venv
 .venv/Scripts/python run.py explain C021766             # one claim, explained
 .venv/Scripts/python run.py edit C019627 auth=AUTH13920 # a person's fix, checked again (shows the ledger knock-on)
 .venv/Scripts/python run.py edit C019627 --clear        # remove it
+.venv/Scripts/python run.py ablate                      # ablation table → output/ablation.md
 .venv/Scripts/python -m pytest -q                       # 30 tests
 
 # Optional: put ANTHROPIC_API_KEY / DISCORD_TOKEN in .env (git-ignored, see .env.example)
@@ -349,6 +287,7 @@ python -m venv .venv
 | `data_issues.csv` | Held rows |
 | `claim_edits.json` | People's corrections, applied on every run |
 | `backtest_report.md` | Accuracy, confusion matrix, every miss, hidden outcomes |
+| `ablation.md` | Ablation tables (cumulative and leave one out) |
 
 ### Code map
 
@@ -360,6 +299,7 @@ python -m venv .venv
 | `src/engine.py` | Timeline replay and precedence |
 | `src/fixes.py` | Fix suggestions, approved auto fixes, guardrails |
 | `src/backtest.py` | Accuracy, confusion matrix, hidden outcomes |
+| `src/ablation.py` | Back-test with parts of the agent switched on/off |
 | `src/explain.py` | Haiku explanations (template fallback) |
 | `src/propose.py` | Sonnet rule proposals + history test |
 | `src/bot.py` | Discord review bot |

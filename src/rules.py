@@ -44,6 +44,7 @@ class RuleContext:
     visits: VisitIndex
     auths: dict[str, Authorization]
     payer_rules: dict[str, dict]     # payer_id -> contents of rules/PY0x.yaml
+    disabled: frozenset = frozenset()   # denial codes switched off (ablation study only)
 
     def valid_auths_for(self, claim: Claim) -> list[str]:
         return [a.auth_id for a in self.auths.values() if a.covers(claim)]
@@ -211,7 +212,8 @@ SINGLE_CHECKS = [
 def check_claim(claim: Claim, ctx: RuleContext, ledger: Ledger) -> list[Issue]:
     """Run every rule and return every issue found (not just the one the payer will report)."""
     issues = [issue for check in SINGLE_CHECKS if (issue := check(claim, ctx, ledger))]
-    return issues + check_contract_rules(claim, ctx, ledger)
+    issues += check_contract_rules(claim, ctx, ledger)
+    return [i for i in issues if i.code not in ctx.disabled]
 
 
 def reported_issue(issues: list[Issue], precedence: list[str]) -> Optional[Issue]:
