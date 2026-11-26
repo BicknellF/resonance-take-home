@@ -294,20 +294,19 @@ claim card (`units 16, auth AUTH10782`), ❌ to undo an auto fix, or a corrected
 ## Running it
 
 ```bash
-python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt           # macOS/Linux: .venv/bin/pip
+pip install -r requirements.txt
 
-.venv/Scripts/python run.py check                       # back-test + predictions → output/
-.venv/Scripts/python run.py check --extra demo/odd_claims.csv   # adds 4 badly formatted claims (hold path)
-.venv/Scripts/python run.py explain C021766             # one claim, explained
-.venv/Scripts/python run.py edit C019627 auth=AUTH13920 # a person's fix, checked again (shows the ledger knock-on)
-.venv/Scripts/python run.py edit C019627 --clear        # remove it
-.venv/Scripts/python run.py ablate                      # ablation table → output/ablation.md
-.venv/Scripts/python -m pytest -q                       # 30 tests
+python run.py check                       # back-test + predictions → output/
+python run.py check --extra demo/odd_claims.csv   # adds 4 badly formatted claims (hold path)
+python run.py explain C021766             # one claim, explained
+python run.py edit C019627 auth=AUTH13920 # a person's fix, checked again (shows the ledger knock-on)
+python run.py edit C019627 --clear        # remove it
+python run.py ablate                      # ablation table → output/ablation.md
+python -m pytest -q                       # 30 tests
 
 # Optional: put ANTHROPIC_API_KEY / DISCORD_TOKEN in .env (git-ignored, see .env.example)
-.venv/Scripts/python run.py propose --without-contract-rules    # LLM rediscovers amendment 3
-.venv/Scripts/python run.py bot --extra demo/odd_claims.csv     # then type !post in Discord
+python run.py propose --without-contract-rules    # LLM rediscovers amendment 3
+python run.py bot --extra demo/odd_claims.csv     # then type !post in Discord
 ```
 
 | Output (`output/`) | Contents |

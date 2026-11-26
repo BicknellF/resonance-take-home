@@ -1,14 +1,12 @@
 # Demo script (10 minutes)
 
-All commands run from the repo root. Activate the virtualenv first so `python` is the project's Python:
-`.venv\Scripts\Activate.ps1` (PowerShell) or `source .venv/Scripts/activate` (Git Bash).
+All commands run from the repo root.
 
 ## Before the demo
 
 ```bash
-# once: environment + keys
-python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt
+# once: packages + keys
+pip install -r requirements.txt
 cp .env.example .env        # fill in ANTHROPIC_API_KEY and DISCORD_TOKEN
 
 # sanity check (should print "30 passed")
