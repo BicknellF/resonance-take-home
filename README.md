@@ -140,18 +140,7 @@ What this shows:
 
 ## How it works
 
-```mermaid
-flowchart LR
-    D[(Claims, auths,<br>EVV visits)] --> C[Clean at runtime]
-    C --> E["Check every rule<br>with a running ledger"]
-    E --> O{Outcome}
-    O -->|pass / auto-fix| P([Send])
-    O -->|simple fix| S([Submitter])
-    O -->|judgement| R([Reviewer])
-    S -->|corrects and resubmits| E
-    R -->|edit| E
-    E -.->|back-test misses| L[LLM proposes rules] -.->|approved| E
-```
+![Agent diagram: inputs are cleaned, checked by deterministic rules, then sent, auto-fixed and re-checked, returned to the submitter, or sent to human review](Agent-diagram.png)
 
 The ledger is the stateful part: each claim's outcome changes what the next claim on the same authorization,
 member-day or patient-service-date can get. The sections below go through each step.
