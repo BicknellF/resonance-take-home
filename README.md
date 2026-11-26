@@ -8,7 +8,8 @@ back to them, and sends only the judgement calls to a reviewer through a Discord
 
 ---
 
-## Results
+<details>
+<summary><h2>Results</h2></summary>
 
 **Back-test on 3,830 past claims** (history and to-check claims replayed as one timeline):
 
@@ -135,6 +136,8 @@ What this shows:
   history alone can't. It also costs the one false denial (C012372, the "hidden outcome").
 - Caveat: every rule and the precedence were learned from this same history, so this shows what each part
   contributes, not how well it does on unseen data.
+
+</details>
 
 ---
 
@@ -281,7 +284,8 @@ claim card (`units 16, auth AUTH10782`), ❌ to undo an auto fix, or a corrected
 
 ---
 
-## Running it
+<details>
+<summary><h2>Running it</h2></summary>
 
 ```bash
 pip install -r requirements.txt
@@ -333,6 +337,8 @@ optional features.
 | `src/mappings.py` | Adds a spelling a person approved in Discord to `mappings.yaml`, so the cleaner recognises it next time |
 | `src/ablation.py` | Study only: re-runs the back-test with parts of the agent switched on or off (`run.py ablate`) |
 | `rules/PY0x.yaml`, `mappings.yaml` | Payer rules and known spellings (data, not code) |
+
+</details>
 
 ---
 
