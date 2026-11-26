@@ -2,7 +2,8 @@
 
 Approved auto fixes (user decision, see PLAN.md):
   D04 set modifier · D05 drop a duplicate of a paid claim ·
-  D05 turn a duplicate of a denied claim into a correction (frequency 7)
+  D05 turn a duplicate of a denied claim into a correction (frequency 7), only when the
+  original's denial code is a checkable one (not D99): otherwise a person finds the cause
 
 Back to the submitter (shown when the claim is submitted, no reviewer involved):
   - D09 units above the verified visit time: the submitter bills what the visit supports,
@@ -28,6 +29,7 @@ from .rules import RuleContext, check_claim
 # listed) last, so a suggested unit count satisfies every rule.
 APPLY_ORDER = ["D05", "D04", "D09", "D06", "D10"]
 MAX_FIX_ROUNDS = 3
+UNEXPLAINED_CODES = {"D99", ""}   # denied with no checkable reason
 
 
 def with_units(claim: Claim, units: int) -> Claim:
@@ -75,8 +77,14 @@ def fix_for(issue: Issue, claim: Claim) -> Fix:
         if d["original_paid"]:
             return Fix("D05", f"Don't submit: {original} for the same visit was already paid",
                        auto=True, stop_claim=True)
-        return Fix("D05", f"Resubmit as a correction of {original} (frequency code 7)", auto=True,
-                   apply=lambda c: replace(c, frequency_code="7", original_claim_id=original))
+        convert = lambda c: replace(c, frequency_code="7", original_claim_id=original)
+        code = d.get("original_code", "")
+        if code in UNEXPLAINED_CODES:
+            # Nothing shows what was wrong with the original, so nothing shows a resubmission fixes it.
+            return Fix("D05", f"Resubmit as a correction of {original} (frequency code 7), but {original} was "
+                              f"denied {code or 'without a code'} with no stated reason: find and fix the cause "
+                              f"first", auto=False, apply=convert)
+        return Fix("D05", f"Resubmit as a correction of {original} (frequency code 7)", auto=True, apply=convert)
 
     if issue.code in ("D07", "D08"):
         valid = d.get("valid_auths", [])

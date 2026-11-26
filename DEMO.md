@@ -34,7 +34,7 @@ git status --short                         # should be empty
 | # | Time | Command | What to point at |
 |---|---|---|---|
 | 1 | 1 min | *(README on GitHub)* | The problem: denials are found weeks later and cost money. Pre-submission check. Show the two diagrams. |
-| 2 | 2 min | `python run.py check` | Cleaning log (9 payer spellings, mixed dates, 32 duplicate rows). **98.1%** back-test (99.7% excl. generic D99). The 546 claims: 377 pass, 4 auto-fixed, 27 don't send, **46 back to the submitter, 92 to a reviewer (17%)**. |
+| 2 | 2 min | `python run.py check` | Cleaning log (9 payer spellings, mixed dates, 32 duplicate rows). **98.1%** back-test (99.7% excl. generic D99). The 546 claims: 377 pass, 2 auto-fixed, 27 don't send, **46 back to the submitter, 94 to a reviewer (17%)**. |
 | 3 | 1 min | `python run.py explain C021766` | A corrected claim that fixed its D07 but still breaks D09 + D10 (hidden by Summit's precedence). All problems kept, suggested 21 → 20. Haiku rewords it (add `--no-llm` if the API is slow). |
 | 4 | 1.5 min | `python run.py edit C019627 auth=AUTH13920` | A person's fix goes back through the agent. C019627 now passes, **and the ledger knock-on turns C019010 into a D02** (the auth is now used up). Then `python run.py edit C019627 --clear`. |
 | 5 | 0.5 min | `python run.py edit C019037 units=17` | A person's value is checked like the agency's: 17 breaks Summit's whole-hours rule, so it suggests 16. Then `python run.py edit C019037 --clear`. |
@@ -74,8 +74,10 @@ Notes:
 - Payer rules live in YAML, so a rule change needs no code change.
 
 **Human in the loop**
-- **75% of claims need no one, 8% go back to the submitter, 17% go to a reviewer**, each with the exact fix suggested.
-- Auto fixes only where no money changes (modifier, duplicates, frequency 7), and only if the claim passes again.
+- **74% of claims need no one, 8% go back to the submitter, 17% go to a reviewer**, each with the exact fix suggested.
+- Auto fixes only where no money changes (modifier, duplicates, frequency 7), and only if the claim passes again. The batch is re-checked with the fixes booked in the ledger.
+- Corrections must prove they fix a denied original (not a paid one, not a generic D99).
+- Rule proposals with any false denial are rejected before a person sees them. The Discord ✅ is a demo of approval, not a real control.
 - Every human edit goes back through the agent: the whole timeline is re-checked and knock-on effects reported.
 
 **Results**

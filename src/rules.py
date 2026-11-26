@@ -140,7 +140,8 @@ def check_duplicate(claim: Claim, ctx: RuleContext, ledger: Ledger) -> Optional[
     if earlier is None:
         return None
     return Issue("D05", f"Duplicate of {earlier.claim_id}",
-                 {"original_claim_id": earlier.claim_id, "original_paid": earlier.paid})
+                 {"original_claim_id": earlier.claim_id, "original_paid": earlier.paid,
+                  "original_code": earlier.code})
 
 
 def check_auth_missing(claim: Claim, ctx: RuleContext, ledger: Ledger) -> Optional[Issue]:

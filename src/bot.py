@@ -3,7 +3,9 @@
 Channels (create them in your server with these exact names):
   #claim-review         auto fixes (FYI, ❌ to undo) and claims that need a reviewer
   #data-issues          claims the cleaner couldn't read (✅ accepts the suggested spelling)
-  #rule-proposals       LLM-proposed rules, tested on history (✅ adds to rules YAML)
+  #rule-proposals       LLM-proposed rules, tested on history (✅ adds to rules YAML). Only rules
+                        with 0 wrongly denied paid claims are posted. The ✅ is a DEMO of approval,
+                        not a real control: anyone in the channel can click it.
   #needs-investigation  denials nobody can explain (reply with what you found)
 
 Claims flagged back to the submitter (D09 visit time, D03 filing limit) are not posted: they're
@@ -323,7 +325,11 @@ class ReviewBot(discord.Client):
 
         elif item.kind == "proposal":
             proposal = item.data
-            if approve:
+            failure = propose.gate_failure(proposal["evidence"])
+            if approve and failure:   # belt and braces: proposals.json could be edited by hand
+                log_decision(user, item, "rule_blocked")
+                await message.reply(f"Can't add this rule: {failure}.")
+            elif approve:
                 rule = dict(proposal["rule"])
                 added = add_contract_rule(proposal["payer_id"], rule)
                 log_decision(user, item, "rule_added" if added else "rule_already_exists")

@@ -57,6 +57,8 @@ def cmd_propose(args):
     dataset, rules, results = run_pipeline(args)
     proposals, investigations = propose.run(dataset, rules, results)
     print(f"{len(proposals)} rule proposals, {len(investigations)} claims for investigation")
+    for reason in sorted({i["rejected_rule"] for i in investigations if i.get("rejected_rule")}):
+        print(f"  x {reason}")
     for p in proposals:
         print(f"  - {p['title']}: catches {p['evidence']['newly_correct']} denials, "
               f"wrongly denies {p['evidence']['new_false_denials']} paid claims")

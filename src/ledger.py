@@ -21,6 +21,7 @@ from .models import Authorization, Claim
 class SeenClaim:
     claim_id: str
     paid: bool
+    code: str = ""      # denial code (known for history, predicted for to-check); "" if paid
 
 
 class Ledger:
@@ -39,8 +40,8 @@ class Ledger:
         """The first claim already submitted with the same patient, service, date and payer."""
         return self.first_claim.get(claim.duplicate_key)
 
-    def record(self, claim: Claim, paid: bool) -> None:
-        self.first_claim.setdefault(claim.duplicate_key, SeenClaim(claim.claim_id, paid))
+    def record(self, claim: Claim, paid: bool, code: str = "") -> None:
+        self.first_claim.setdefault(claim.duplicate_key, SeenClaim(claim.claim_id, paid, code))
         if paid:
             if claim.auth_id in self.units_left:
                 self.units_left[claim.auth_id] -= claim.units

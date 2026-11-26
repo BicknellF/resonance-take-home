@@ -28,3 +28,21 @@ def test_rediscovered_amendment_is_tested_and_generic_d99s_go_to_people(dataset)
     assert proposals[0]["evidence"]["new_false_denials"] == 0
     assert "C999999" not in proposals[0]["example_claims"]
     assert {i["claim_id"] for i in investigations} == set(generic_ids)
+
+
+def test_rule_with_false_denials_never_reaches_a_person(dataset):
+    # Amendment 3 without its start date also hits June claims that were paid.
+    rules = load_payer_rules(without_contract_rules=True)
+    results = engine.run(dataset, rules)
+    misses = propose.collect_misses(results)
+    summit_ids = [m["claim_id"] for m in misses if "amendment 3" in m["payer_remark"]]
+    fake_llm_answer = Grouping(groups=[
+        Group(title="Summit whole hours", claim_ids=summit_ids, explanation="Remarks cite amendment 3",
+              is_rule=True, rule=ProposedRule(payer_id="PY03", type="units_multiple_of", value=4,
+                                              dos_from=None, code="D10", description="Bill whole hours")),
+    ])
+    proposals, investigations = propose.build_outputs(fake_llm_answer, misses, dataset, rules, results)
+
+    assert proposals == []
+    assert {i["claim_id"] for i in investigations} == set(summit_ids)
+    assert all("wrongly deny" in i["rejected_rule"] for i in investigations)

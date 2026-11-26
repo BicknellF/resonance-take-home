@@ -24,13 +24,13 @@ back to them, and sends only the judgement calls to a reviewer through a Discord
 | Outcome | Claims | |
 |---|---:|---|
 | Pass as submitted | 377 | |
-| Auto-fixed, then re-checked | 4 | $320.80 recovered |
+| Auto-fixed, then re-checked | 2 | $183.00 recovered |
 | Don't submit (duplicate of a paid claim) | 27 | |
 | Back to the submitter (units over the visit time, past the filing limit) | 46 | $4,201.20, shown when submitting |
-| Needs a reviewer (with the exact fix suggested) | 92 | $10,506.20 at risk |
+| Needs a reviewer (with the exact fix suggested) | 94 | $10,644.00 at risk |
 
-**A reviewer sees 92 of 546 claims (16.8%)** instead of all of them. Another 46 (8.4%) go straight back to the
-submitter, and the other 408 (74.7%) need no one.
+**A reviewer sees 94 of 546 claims (17.2%)** instead of all of them. Another 46 (8.4%) go straight back to the
+submitter, and the other 406 (74.4%) need no one.
 
 ### Confusion matrix (back-test)
 
@@ -211,7 +211,7 @@ next one (29 to-check claims break 2+ rules).
 |---|---|---|
 | D04 set the correct modifier | **Auto** | No money changes, and the rule is unambiguous |
 | D05 drop a duplicate of a paid claim | **Auto** | It's double billing |
-| D05 turn a duplicate of a denied claim into a correction (frequency 7) | **Auto** | It's the correct way to resubmit |
+| D05 turn a duplicate of a denied claim into a correction (frequency 7) | **Auto**, if the original's denial code is checkable | It's the correct way to resubmit. If the original was a generic D99 (both cases in the data: C021652, C021640), nothing shows the resubmission fixes it, so a reviewer gets it with the conversion suggested. |
 | D09 units above the verified visit time | **Submitter** | Shown when submitting: bill what the visit supports, or fix the visit record. They know the visit, a reviewer doesn't. The exact number is suggested (e.g. C019037: 20 → 16, because 19 would break Summit's whole-hours rule). |
 | D03 past the filing limit | **Submitter** | Can't be fixed, so the submitter is told not to send it (write off) |
 | D06 / D10 cut units | Reviewer | Gives up revenue on a cap or contract decision (which service to cut). The exact number is suggested. |
@@ -220,7 +220,15 @@ next one (29 to-check claims break 2+ rules).
 | D01 no verified visit | Reviewer | Split into: no visit at all, visit rejected or pending (chase it), or visit on the next or previous day (wrong date?) |
 
 **Guardrails:** a claim is only auto-fixed if *every* problem on it has an auto fix, the billed amount doesn't go up,
-and the fixed claim **passes every rule when checked again**. A claim only goes back to the submitter if *every*
+and the fixed claim **passes every rule when checked again**. The batch is then **checked again as it will be sent**:
+auto-fixed claims are booked in the ledger, so a later claim can't slip past a limit a fix has used up (a Harbor
+Saturday claim of 24 units fixed U2 → U3, then 16 units for the same member and day, now gets D06, not a pass).
+
+**Corrected claims (frequency 7)** only go out without a person if the original exists, is for the same visit, was
+denied (not paid), and was denied for a checkable reason that the correction no longer has. Anything else (a
+correction of a paid claim, of a generic D99, or of a different visit) goes to a reviewer with the reason.
+
+A claim only goes back to the submitter if *every*
 problem is a submitter or auto one. If it also has a reviewer problem (e.g. D09 plus an exhausted auth), it goes to a
 reviewer with everything listed.
 
@@ -234,7 +242,7 @@ appears in exactly three places, always after the rules have run:
 | When | Model | What it does | Guardrail |
 |---|---|---|---|
 | A person clicks 🔍 on a review card, or runs `run.py explain <id>` | Haiku 5.5 | Rewords the engine's findings for one claim into 2–3 plain sentences | It only gets the engine's facts and is told not to add problems or fixes. Template fallback if there's no key or an error. Clean passes never call it. |
-| After the back-test, on claims we got wrong (`run.py propose`) | Sonnet 5.5 | Groups the misses by payer remark and proposes rules, limited to rule types the engine can run (e.g. `units_multiple_of`) | Every proposal is **re-run on the full history** (denials it catches vs paid claims it would wrongly deny) before a person sees it in #rule-proposals. ✅ writes it into the payer YAML. |
+| After the back-test, on claims we got wrong (`run.py propose`) | Sonnet 5.5 | Groups the misses by payer remark and proposes rules, limited to rule types the engine can run (e.g. `units_multiple_of`) | Every proposal is **re-run on the full history**. Any proposal that wrongly denies a paid claim (or makes a right prediction wrong) is **rejected automatically** and never reaches a person: amendment 3 without its start date catches 35 denials but wrongly denies 83 paid claims, so it's blocked. Only clean proposals reach #rule-proposals, where ✅ writes them into the payer YAML. |
 | A person replies to a proposal or investigation | Sonnet 5.5 | Revises the proposal using the person's feedback | Re-tested on history again. Rejected rules are remembered and not proposed again. |
 
 Misses with no checkable pattern (the generic D99s) go to **#needs-investigation** with the LLM's best guess. People's
@@ -280,6 +288,10 @@ them when submitting (`return_to_submitter` in `review_queue.csv`).
 
 Every reaction and reply is logged to `output/decisions.jsonl`.
 
+**The Discord ✅ is a demo of approval, not a real control.** Anyone in the channel can click it, and there's no
+sign-in check, role, second approver or tamper-proof audit trail. In production, adding a rule or sending money-changing
+fixes would need named approvers with permissions, and changes to the rules files reviewed like code.
+
 **Every human decision goes back through the agent** (`src/overrides.py`). A ✅ on a suggested fix, a typed reply on a
 claim card (`units 16, auth AUTH10782`), ❌ to undo an auto fix, or a corrected value for a held row is saved as an edit
 (`output/claim_edits.json`), and then the **whole timeline is checked again**:
@@ -321,19 +333,26 @@ python run.py bot --extra demo/odd_claims.csv     # then type !post in Discord
 
 ### Code map
 
-| File | Role |
+Listed in the order a claim goes through them. The first ten are the core checker (`run.py check`). The rest are
+optional features.
+
+| File | What it does |
 |---|---|
-| `src/load.py` | Runtime cleaning and holds |
-| `src/rules.py` | One check per denial code |
-| `src/ledger.py` | Running state: auth units, daily units, claims seen |
-| `src/engine.py` | Timeline replay and precedence |
-| `src/fixes.py` | Fix suggestions, approved auto fixes, guardrails |
-| `src/backtest.py` | Accuracy, confusion matrix, hidden outcomes |
-| `src/ablation.py` | Back-test with parts of the agent switched on/off |
-| `src/explain.py` | Haiku explanations (template fallback) |
-| `src/propose.py` | Sonnet rule proposals + history test |
-| `src/bot.py` | Discord review bot |
-| `src/overrides.py` | People's edits, sent back through the agent |
+| `src/models.py` | Plain data classes passed between stages: `Claim`, `Authorization`, `Visit`, `Issue`, `Fix`, `Hold`, `CheckResult` |
+| `src/config.py` | File paths, model names, reads `.env`, loads the payer YAML files (and can drop contract rules for the rediscovery demo) |
+| `src/load.py` | Reads the CSVs and cleans each row while loading it: payer spellings, mixed date formats, stray spaces and lower case in codes, duplicate rows. Applies people's edits first. Rows it can't read are held for a person, never guessed. |
+| `src/rules.py` | One function per denial code (D01–D10), using the visits, authorizations, payer YAML and ledger. Returns every problem on a claim, and picks the one the payer reports using its precedence order. |
+| `src/ledger.py` | Running totals carried from claim to claim: units left on each authorization (D02), paid units per member per day (Harbor's 32 cap, D06), and every claim seen so far (duplicates, D05) |
+| `src/fixes.py` | Decides the fix for each problem and who handles it: auto (modifier, duplicates, checkable corrections), the submitter (D09 visit time, D03 filing limit) or a reviewer. Auto fixes only go ahead if the claim passes every rule when checked again. |
+| `src/overrides.py` | Saves people's corrections (`output/claim_edits.json`) so each run re-checks them through the whole timeline |
+| `src/engine.py` | Merges both claim files into one timeline in submission order and checks each claim against the ledger. Runs twice: once as submitted (for the back-test) and once with auto fixes booked (the batch as it will be sent). Also checks that corrections fix a denied original. |
+| `src/backtest.py` | Compares predictions with real history outcomes: accuracy, confusion matrix, every miss, and history claims that reveal a to-check claim's outcome |
+| `src/outputs.py` | Writes `predictions.csv`, `corrected_claims.csv`, `review_queue.csv`, `data_issues.csv` and the run summary |
+| `src/explain.py` | Rewords the engine's findings for one claim into plain English with Haiku. Falls back to a template without an API key. |
+| `src/propose.py` | Sends the back-test misses to Sonnet to group by cause and propose new contract rules, tests each one on all of history, and rejects any with a false denial before a person sees it. Unexplained misses go to investigation. |
+| `src/bot.py` | Discord review layer: posts cards for reviewer claims, held rows, rule proposals and investigations. Reactions and replies are saved and sent back through the engine. |
+| `src/mappings.py` | Adds a spelling a person approved in Discord to `mappings.yaml`, so the cleaner recognises it next time |
+| `src/ablation.py` | Study only: re-runs the back-test with parts of the agent switched on or off (`run.py ablate`) |
 | `rules/PY0x.yaml`, `mappings.yaml` | Payer rules and known spellings (data, not code) |
 
 ---

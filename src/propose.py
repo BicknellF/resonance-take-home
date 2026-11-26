@@ -8,7 +8,13 @@
 4. Groups that aren't a rule (e.g. generic "contact payer" denials) go to people
    in #needs-investigation, with the LLM's best guess attached.
 
-Nothing goes live until a person approves it in Discord (see bot.py).
+Gate: a proposal that wrongly denies any paid claim, or turns any right prediction wrong,
+is rejected automatically and never reaches a person (its claims go to investigation
+instead, with the reason). Only proposals with a clean back-test reach #rule-proposals.
+
+Nothing goes live until a person approves it in Discord (see bot.py). In this prototype
+that approval is a demo: anyone in the channel can react, and there's no sign-off,
+second approver or audit beyond output/decisions.jsonl. A real deployment needs those.
 """
 
 import copy
@@ -174,16 +180,32 @@ def build_outputs(grouping: Grouping, misses: list[dict], dataset: Dataset, rule
             if any(same_rule(yaml_rule, r) for r in rejected):
                 continue
             evidence = test_rule(rule.payer_id, yaml_rule, dataset, rules, results)
-            if evidence["newly_correct"] > 0:
+            failure = gate_failure(evidence)
+            if failure is None:
                 proposals.append({"title": group.title, "explanation": group.explanation,
                                   "payer_id": rule.payer_id, "rule": yaml_rule,
                                   "evidence": evidence, "example_claims": ids[:5]})
                 continue
-        # Not a rule, or the rule didn't help: people investigate each claim.
+            reason = f"Proposed rule {yaml_rule['type']} {yaml_rule['value']} "                      f"(from {yaml_rule.get('dos_from') or 'always'}) rejected automatically: {failure}"
+        else:
+            reason = ""
+        # Not a rule, or the rule failed the gate: people investigate each claim.
         for cid in ids:
             investigations.append({"claim_id": cid, "group": group.title, "llm_guess": group.explanation,
+                                   "rejected_rule": reason,
                                    **{k: by_id[cid][k] for k in ("payer", "actual", "payer_remark", "date_of_service")}})
     return proposals, investigations
+
+
+def gate_failure(evidence: dict) -> Optional[str]:
+    """Why a tested rule may not be shown to a person, or None if it passes the gate."""
+    if evidence["new_false_denials"] > 0:
+        return f"it would wrongly deny {evidence['new_false_denials']} paid claims"
+    if evidence["newly_wrong"] > 0:
+        return f"it would make {evidence['newly_wrong']} right predictions wrong"
+    if evidence["newly_correct"] == 0:
+        return "it doesn't fix any claim"
+    return None
 
 
 def revise(proposal: dict, feedback: str, dataset: Dataset, rules: dict,
