@@ -17,14 +17,6 @@ engine found and the fix for each. Write 2-3 plain sentences: what's wrong, what
 needs to be done, and why. Use only the facts given. Do not add new problems, fixes,
 rules or advice. Do not use jargon beyond denial codes. No greeting or sign-off."""
 
-OUTCOME_TEXT = {
-    "pass": "No problems found. Ready to submit.",
-    "auto_fixed": "Fixed automatically. No action needed unless you disagree.",
-    "do_not_submit": "Don't submit this claim.",
-    "return_to_submitter": "Back to the submitter: fix this before sending (no reviewer needed).",
-    "needs_person": "Needs a person: at least one problem can't be fixed automatically.",
-}
-
 
 def facts(result: CheckResult) -> dict:
     """Everything the LLM is allowed to talk about."""
@@ -36,14 +28,14 @@ def facts(result: CheckResult) -> dict:
         "problems": [f"{i.code}: {i.message}" for i in result.issues],
         "fixes": [{"fix": f.description, "automatic": f.auto, "for_submitter": f.submitter} for f in result.fixes],
         "fixed_units": result.fixed_claim.units if result.fixed_claim else None,
-        "outcome": OUTCOME_TEXT[result.outcome],
+        "outcome": result.outcome_text,
         "notes": result.notes,
     }
 
 
 def template_explanation(result: CheckResult) -> str:
     """Deterministic fallback: the same facts, as plain lines."""
-    lines = [OUTCOME_TEXT[result.outcome]]
+    lines = [result.outcome_text]
     lines += [f"- Problem {i.code}: {i.message}" for i in result.issues]
     for fix in result.fixes:
         who = "done automatically" if fix.auto else "for the submitter" if fix.submitter else "needs a person"

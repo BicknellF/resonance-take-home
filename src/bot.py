@@ -32,15 +32,16 @@ from pathlib import Path
 
 import discord
 
-from . import backtest, engine, explain, overrides, propose
-from .config import OUTPUT_DIR, add_contract_rule, load_payer_rules
-from .load import load_dataset
+from . import backtest, explain, overrides, pipeline, propose
+from .config import OUTPUT_DIR, add_contract_rule
 from .mappings import add_spelling
 
 DECISIONS_FILE = OUTPUT_DIR / "decisions.jsonl"
 YES, NO, MORE = "✅", "❌", "🔍"
 SHORT = 110          # max characters for the one-line fix
 MAX_MESSAGE = 1900   # Discord's limit is 2000 characters
+OUTCOME_ICONS = {"pass": "✅", "auto_fixed": "🔧", "do_not_submit": "🚫", "return_to_submitter": "↩️",
+                 "needs_person": "⚠️"}
 
 
 @dataclass
@@ -50,40 +51,32 @@ class Item:
 
 
 class Pipeline:
-    """Runs the checker and keeps the latest results for the bot."""
+    """Runs the checker and keeps the latest run (plus the LLM's proposals) for the bot."""
 
     def __init__(self, extra_claims_file):
         self.extra = Path(extra_claims_file) if extra_claims_file else None
+        self.run = None
         self.refresh()
 
     def refresh(self) -> dict[str, tuple]:
         """Re-run the whole agent (with every person's edits) and return the to-check claims
         whose outcome changed: {claim_id: (before, after)}, each "outcome code" or "held"."""
-        before = self.snapshot() if hasattr(self, "results") else {}
-        self.dataset = load_dataset(self.extra, overrides.load())
-        self.rules = load_payer_rules()
-        self.results = engine.run(self.dataset, self.rules)
+        before, self.run = self.run, pipeline.run(self.extra, overrides.load())
         self.proposals = propose.load_json(propose.PROPOSALS_FILE, [])
         self.investigations = propose.load_json(propose.INVESTIGATIONS_FILE, [])
-        after = self.snapshot()
-        return {cid: (before.get(cid), after.get(cid)) for cid in before.keys() | after.keys()
-                if before and before.get(cid) != after.get(cid)}
+        return pipeline.changed(before, self.run) if before else {}
 
-    def snapshot(self) -> dict[str, str]:
-        state = {h.claim_id: "held" for h in self.dataset.holds if h.source == "to_check"}
-        for r in self.results:
-            if r.claim.source == "to_check":
-                state[r.claim.claim_id] = f"{r.outcome} {r.predicted_code}".strip()
-        return state
+    @property
+    def dataset(self):
+        return self.run.dataset
 
-    def result(self, claim_id: str):
-        return next((r for r in self.results if r.claim.claim_id == claim_id), None)
+    @property
+    def rules(self):
+        return self.run.rules
 
-    def holds_for(self, claim_id: str):
-        return [h for h in self.dataset.holds if h.claim_id == claim_id]
-
-    def to_check(self, outcome):
-        return [r for r in self.results if r.claim.source == "to_check" and r.outcome == outcome]
+    @property
+    def results(self):
+        return self.run.results
 
     def accuracy(self) -> str:
         report = backtest.evaluate(self.results)
@@ -247,8 +240,8 @@ class ReviewBot(discord.Client):
 
     async def post_all(self, guild: discord.Guild, limit: int):
         p = self.pipeline
-        needs = p.to_check("needs_person")
-        auto = p.to_check("auto_fixed") + p.to_check("do_not_submit")
+        needs = p.run.to_check("needs_person")
+        auto = p.run.to_check("auto_fixed") + p.run.to_check("do_not_submit")
         review = discord.utils.get(guild.text_channels, name="claim-review")
         if review:
             await review.send(f"Posting {min(limit, len(needs))} of {len(needs)} claims needing a person and "
@@ -256,7 +249,7 @@ class ReviewBot(discord.Client):
                               f"{YES} handled · {NO} disagree/undo · {MORE} details")
         await self.post(guild, "claim-review", "needs_person", needs[:limit])
         await self.post(guild, "claim-review", "auto_fix", auto[:limit])
-        held = [h for h in p.dataset.holds if h.source == "to_check"][:limit]
+        held = p.dataset.to_check_holds[:limit]
         await self.post(guild, "data-issues", "data_issue", held)
         await self.post(guild, "rule-proposals", "proposal", p.proposals[:limit])
         await self.post(guild, "needs-investigation", "investigation", p.investigations[:limit])
@@ -390,10 +383,7 @@ class ReviewBot(discord.Client):
             if new is None:
                 await message.reply("The revised proposal didn't improve the back-test, so it was dropped.")
             else:
-                sent = await message.channel.send(card_proposal(new)[:MAX_MESSAGE])
-                self.items[sent.id] = Item("proposal", new)
-                for emoji in reactions_for("proposal", new):
-                    await sent.add_reaction(emoji)
+                await self.post_one(message.channel, "proposal", new)
         else:
             await message.reply("Noted.")
 
@@ -412,7 +402,7 @@ class ReviewBot(discord.Client):
             lines.append(f"Ledger knock-on: {'; '.join(shown)}{more}")
         await message.reply("\n".join(lines)[:MAX_MESSAGE])
 
-        result, holds = p.result(claim_id), p.holds_for(claim_id)
+        result, holds = p.run.result(claim_id), p.run.holds_for(claim_id)
         if holds:
             for hold in holds:
                 await self.post_one(message.channel, "data_issue", hold)
@@ -422,25 +412,11 @@ class ReviewBot(discord.Client):
             await self.post_one(message.channel, "auto_fix", result)
 
     def outcome_text(self, claim_id: str) -> str:
-        p = self.pipeline
-        holds = p.holds_for(claim_id)
-        if holds:
-            return "still on hold: " + "; ".join(f"{h.field} `{h.value}` ({h.reason})" for h in holds)
-        result = p.result(claim_id)
-        if result is None:
-            return "not found."
-        if result.outcome == "pass":
-            return "✅ passes every rule, ready to submit."
-        if result.outcome == "auto_fixed":
-            return f"🔧 auto-fixed ({', '.join(f.code for f in result.fixes)}), ready to submit."
-        if result.outcome == "do_not_submit":
-            return "🚫 don't submit."
-        codes = ", ".join(sorted({i.code for i in result.issues}))
-        if result.outcome == "return_to_submitter":
-            return (f"↩️ flagged back to the submitter: payer would deny {result.predicted_code} (breaks {codes}). "
-                    f"No reviewer needed.")
-
-        return f"⚠️ still needs a person: payer would deny {result.predicted_code} (breaks {codes}). New card below."
+        run = self.pipeline.run
+        result = None if run.holds_for(claim_id) else run.result(claim_id)
+        icon = OUTCOME_ICONS.get(result.outcome, "") if result else "🧩"
+        more = " New card below." if result and result.outcome == "needs_person" else ""
+        return f"{icon} {run.status(claim_id)}{more}".strip()
 
 
 def main(args):

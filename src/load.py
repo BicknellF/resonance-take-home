@@ -31,6 +31,10 @@ class Dataset:
     def held_claim_ids(self) -> set[str]:
         return {h.claim_id for h in self.holds}
 
+    @property
+    def to_check_holds(self) -> list[Hold]:
+        return [h for h in self.holds if h.source == "to_check"]
+
     def claim(self, claim_id: str) -> Optional[Claim]:
         return next((c for c in self.claims if c.claim_id == claim_id), None)
 

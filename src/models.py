@@ -121,3 +121,17 @@ class CheckResult:
     @property
     def predicted_status(self) -> str:
         return "denied" if self.predicted_code else "paid"
+
+    @property
+    def outcome_text(self) -> str:
+        """One plain sentence on the outcome. The CLI, the bot and the explanations all use it."""
+        codes = ", ".join(sorted({i.code for i in self.issues}))
+        denial = f"the payer would deny {self.predicted_code} (breaks {codes})"
+        return {
+            "pass": "Passes every rule. Ready to submit.",
+            "auto_fixed": f"Auto-fixed ({', '.join(f.code for f in self.fixes)}). "
+                          f"Ready to submit unless you disagree.",
+            "do_not_submit": "Don't submit this claim.",
+            "return_to_submitter": f"Back to the submitter: {denial}. No reviewer needed.",
+            "needs_person": f"Needs a person: {denial}.",
+        }[self.outcome]

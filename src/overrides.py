@@ -26,7 +26,7 @@ ALIASES = {"dos": "date_of_service", "date": "date_of_service", "auth": "auth_id
            "billed": "billed_amount", "amount": "billed_amount", "service": "service_code",
            "patient": "patient_id"}
 BLANK = {"none", "blank", "-", '""'}
-# Fields a suggested correction can change (see fixes.suggest_correction).
+# Fields a fix can change (suggested corrections, auto fixes, and what a person accepts).
 SUGGESTABLE = ("units", "modifier", "auth_id", "frequency_code", "original_claim_id")
 
 

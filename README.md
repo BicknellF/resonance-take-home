@@ -252,17 +252,6 @@ The **submitter** is agency billing staff with claims ready to send. The **revie
 team lead working in Discord (standing in for Slack). Nothing goes to the payer until every claim either passes the
 rules or a person has decided what to do with it.
 
-```mermaid
-flowchart LR
-    %% Edge order matters: it puts the reviewer under the main row, feeding into the checker's left side.
-    S([Submitter]) ~~~ R([Reviewer])
-    S -->|submits claims| A[Claim checker]
-    R -->|reviewed claims| A
-    A -->|passes or safely auto-fixed| P([Payer])
-    A -->|"submitter can fix it<br>(units, filing date)"| S
-    A -->|needs judgement| R
-```
-
 `run.py bot` posts short cards with ✅ / ❌ / 🔍 reactions already added, so a reviewer only clicks:
 
 | Channel | What arrives | ✅ means |
@@ -322,7 +311,7 @@ python run.py bot --extra demo/odd_claims.csv     # then type !post in Discord
 
 ### Code map
 
-Listed in the order a claim goes through them. The first ten are the core checker (`run.py check`). The rest are
+Listed in the order a claim goes through them. The first eleven are the core checker (`run.py check`). The rest are
 optional features.
 
 | File | What it does |
@@ -335,6 +324,7 @@ optional features.
 | `src/fixes.py` | Decides the fix for each problem and who handles it: auto (modifier, duplicates, checkable corrections), the submitter (D09 visit time, D03 filing limit) or a reviewer. Auto fixes only go ahead if the claim passes every rule when checked again. |
 | `src/overrides.py` | Saves people's corrections (`output/claim_edits.json`) so each run re-checks them through the whole timeline |
 | `src/engine.py` | Merges both claim files into one timeline in submission order and checks each claim against the ledger. Runs twice: once as submitted (for the back-test) and once with auto fixes booked (the batch as it will be sent). Also checks that corrections fix a denied original. |
+| `src/pipeline.py` | Runs the whole agent once (load with edits, check) and compares two runs to find ledger knock-ons. Shared by `run.py` and the bot. |
 | `src/backtest.py` | Compares predictions with real history outcomes: accuracy, confusion matrix, every miss, and history claims that reveal a to-check claim's outcome |
 | `src/outputs.py` | Writes `predictions.csv`, `corrected_claims.csv`, `review_queue.csv`, `data_issues.csv` and the run summary |
 | `src/explain.py` | Rewords the engine's findings for one claim into plain English with Haiku. Falls back to a template without an API key. |
@@ -359,12 +349,15 @@ optional features.
 - Live testing: Haiku explanations and Discord posting with reactions worked against the real services. Reaction
   handling in the interactive bot is unit-tested offline, and `propose` is tested with a faked LLM response.
 
-## What I'd do next
+## What I'd do next / Conclusion
 
-- Reserve units for claims still pending at the payer (the ledger assumes every outcome is known).
-- A real time holdout: learn precedence on early months only, test on later ones.
-- Persist the bot's message-to-claim map so reactions survive a restart.
-- Write fixes back to the billing system instead of a CSV.
+This agent can semi-autonomously handle claims provided in this format, reducing the number of claims requiring human intervention by approximately 75%. Humans are kept in the loop whilst the agent learns and updates its rules which may cause the % of claims sent to humans to decrease over time. This provides an excellent cost saving opportunity as fewer human hours are spent mechanically reviewing claims.
+
+Were I to spend more time on this there are a few things I would be keen to explore:
+- Talk to the existing reviewers and see if they have any context that would be useful and can be turned into rules.
+- Can we automate PRs for the Sonnet suggested fixes? We probably want an engineer to review any changes.
+- Can we implement something like Jev to do some of the more ambiguous error fixing such as misspellings?
+- How do we expand this to a live system rather than a proof of concept for the rules checking.
 
 See `DEMO.md` for the demo script, `PLAN.md` for the design, `CLAUDE.md` for the data findings, and `PROMPT_LOG.md` for how this was built with
 Claude Code.

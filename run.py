@@ -13,24 +13,19 @@
 import argparse
 from pathlib import Path
 
-from src import backtest, engine, outputs, overrides
-from src.config import OUTPUT_DIR, load_env, load_payer_rules
-from src.load import load_dataset
+from src import backtest, outputs, overrides, pipeline
+from src.config import OUTPUT_DIR, load_env
 
 
-def run_pipeline(args):
-    """Load (with every person's saved edits), check, and return (dataset, rules, results)."""
-    return run_pipeline_with(args, overrides.load())
-
-
-def run_pipeline_with(args, edits):
-    dataset = load_dataset(Path(args.extra) if args.extra else None, edits)
-    rules = load_payer_rules(without_contract_rules=args.without_contract_rules)
-    return dataset, rules, engine.run(dataset, rules)
+def run_pipeline(args, edits=None) -> pipeline.Run:
+    """Load (with every person's saved edits, unless `edits` is given), check, and return the run."""
+    return pipeline.run(Path(args.extra) if args.extra else None,
+                        overrides.load() if edits is None else edits, args.without_contract_rules)
 
 
 def cmd_check(args):
-    dataset, rules, results = run_pipeline(args)
+    run = run_pipeline(args)
+    dataset, results = run.dataset, run.results
 
     print("Cleaning (fixed automatically):")
     for what, n in sorted(dataset.cleaning_log.items()):
@@ -54,8 +49,8 @@ def cmd_propose(args):
     from src import explain, propose
     if not explain.llm_available():
         raise SystemExit("Set ANTHROPIC_API_KEY first: proposing rules needs the LLM.")
-    dataset, rules, results = run_pipeline(args)
-    proposals, investigations = propose.run(dataset, rules, results)
+    run = run_pipeline(args)
+    proposals, investigations = propose.run(run.dataset, run.rules, run.results)
     print(f"{len(proposals)} rule proposals, {len(investigations)} claims for investigation")
     for reason in sorted({i["rejected_rule"] for i in investigations if i.get("rejected_rule")}):
         print(f"  x {reason}")
@@ -66,8 +61,7 @@ def cmd_propose(args):
 
 def cmd_explain(args):
     from src import explain
-    dataset, rules, results = run_pipeline(args)
-    result = next((r for r in results if r.claim.claim_id == args.claim_id), None)
+    result = run_pipeline(args).result(args.claim_id)
     if result is None:
         print(f"{args.claim_id} not found (or on hold for a data issue)")
         return
@@ -85,22 +79,16 @@ def cmd_edit(args):
         overrides.record(args.claim_id, changes, no_auto_fix=args.no_auto_fix)
         print(f"Saved: {overrides.describe(overrides.load()[args.claim_id])}")
 
-    _, _, before = run_pipeline_with(args, {k: v for k, v in overrides.load().items() if k != args.claim_id})
-    dataset, _, results = run_pipeline(args)
-    old = {r.claim.claim_id: r for r in before if r.claim.source == "to_check"}
-    new = {r.claim.claim_id: r for r in results if r.claim.source == "to_check"}
-    held = [h for h in dataset.holds if h.claim_id == args.claim_id]
-    if held:
-        print(f"{args.claim_id} is on hold: " + "; ".join(f"{h.field} {h.value!r} ({h.reason})" for h in held))
-    elif args.claim_id in new:
-        r = new[args.claim_id]
-        print(f"{args.claim_id}: {r.outcome} {r.predicted_code}".rstrip())
-        for line in [f"  problem {i.code}: {i.message}" for i in r.issues] + [f"  {n}" for n in r.notes]:
+    before = run_pipeline(args, {k: v for k, v in overrides.load().items() if k != args.claim_id})
+    after = run_pipeline(args)
+    print(f"{args.claim_id}: {after.status(args.claim_id)}")
+    result = after.result(args.claim_id)
+    if result and not after.holds_for(args.claim_id):
+        for line in [f"  problem {i.code}: {i.message}" for i in result.issues] + [f"  {n}" for n in result.notes]:
             print(line)
-    knock_on = [(cid, old[cid], r) for cid, r in new.items() if cid != args.claim_id and cid in old
-                and (old[cid].outcome, old[cid].predicted_code) != (r.outcome, r.predicted_code)]
-    for cid, o, r in knock_on:
-        print(f"  ledger knock-on: {cid} {o.outcome} {o.predicted_code}".rstrip() + f" -> {r.outcome} {r.predicted_code}")
+    for cid, (old, new) in pipeline.changed(before, after).items():
+        if cid != args.claim_id:
+            print(f"  ledger knock-on: {cid} {old} -> {new}")
 
 
 def cmd_ablate(args):

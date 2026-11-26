@@ -22,7 +22,7 @@ Number entries sequentially and separate them with `---`.
 - Use the system `python` (no virtualenv). Long paths are enabled and `pip_system_certs` was removed: it broke `anthropic` HTTPS calls.
 - `run.py check | propose | explain <id> | bot`. Tests: `python -m pytest -q`. `run.py edit <id> field=value` = a person's correction, checked again.
 - Layout: `src/load.py` (cleaning + holds), `rules.py` (one check per code), `ledger.py` (running state),
-  `engine.py` (timeline), `fixes.py` (approved auto fixes + guardrails), `backtest.py`, `explain.py` (Haiku),
+  `engine.py` (timeline), `pipeline.py` (one run + diff two runs), `fixes.py` (approved auto fixes + guardrails), `backtest.py`, `explain.py` (Haiku),
   `propose.py` (Sonnet), `bot.py` (Discord), `overrides.py` (human edits, re-run), `mappings.py`. Payer rules: `rules/PY0x.yaml`; spellings: `mappings.yaml`.
 - No API key or Discord token on this machine: LLM and bot paths are untested live (they fall back to templates).
 

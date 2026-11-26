@@ -23,6 +23,7 @@ from dataclasses import replace
 
 from .ledger import Ledger
 from .models import CheckResult, Claim, Fix, Issue
+from .overrides import SUGGESTABLE
 from .rules import RuleContext, check_claim
 
 # Fixes are applied in this order: caps first, contract rounding (D10 and any code not
@@ -197,7 +198,7 @@ def suggest_correction(result: CheckResult, ctx: RuleContext, ledger: Ledger) ->
         return
     fixed, _, remaining = apply_fixes(claim, suggestable, ctx, ledger, allowed=lambda f: True)
     changes = [f"{name} {getattr(claim, name) or 'none'} -> {getattr(fixed, name)}"
-               for name in ("units", "modifier", "auth_id", "frequency_code") if getattr(claim, name) != getattr(fixed, name)]
+               for name in SUGGESTABLE if getattr(claim, name) != getattr(fixed, name)]
     if not changes:
         return
     result.suggested_claim = fixed
