@@ -1,27 +1,32 @@
 # Pre-submission claim checker
 
-## Business case
+Home-care agencies lose almost a third of what they bill to denials (**28.7% of claims, $115k of $377k** in the
+history). Three things cause it:
 
-Agencies on Exchange4Health lose money to claim denials they could have avoided. In the claims history, **28.7% of
-claims were denied, $115k of $377k billed (30.4%)**. Almost none of that comes back: the data pack has only **14
-corrected claims against 1,099 denials (about 1%)**. The rest is lost revenue, and late-filing denials can't be
-recovered at all. Yet **about 94% of denied dollars come from rules that can be checked before the claim is sent**:
-missing or wrong authorizations, unverified visits, more units than the visit supports, filing deadlines, modifiers
-and duplicates. A pre-submission checker that applies each payer's rules to the EVV, authorization and claims data
-Exchange4Health already holds:
+1. **The rules keep changing.** Each payer has its own manual, issues mid-year bulletins (a new filing limit, a weekend
+   modifier), and adds contract terms that are written down nowhere. Summit's whole-hour rule only appears in denial
+   remarks, so agencies find out after they've lost the money.
+2. **The data is messy.** The same payer appears under three names, dates come in two formats, and modifiers have
+   stray spaces. Whether a claim is valid also depends on other systems: is the EVV visit verified, how many
+   authorization units are left after every earlier claim, what has the member already been paid for today.
+3. **Nobody follows up on denials.** Only **14 corrected claims were sent against 1,099 denials**. Denials are written
+   off, resubmitted the wrong way (as new claims, so they fail again as duplicates), or the visit gets billed twice.
+   **18 of the claims about to be sent would bill again for visits already paid.**
 
-- **catches every rule-based denial code in a back-test on the claims history** (99.7% exact match, leaving out the
-  generic "contact payer" denials, which can't be predicted)
-- stops 18 claims that would bill again for visits already paid
-- sends only **17% of claims** to a person for review
+This prototype catches the problems **before submission**, which is when fixing them is cheap:
 
-For agencies that means more cash, paid sooner, with less rework. For payers it means fewer bad claims and less double
-billing. For Exchange4Health it is a feature only a platform holding all three data sets can offer. These figures come
-from synthetic data (12 agencies, about 6 months), so the rates matter more than the dollar amounts.
+- **Rules are config, and the AI keeps them current.** Each payer's rules sit in a YAML file. The LLM reads new
+  bulletins and denial remarks and *proposes* rule changes, and a person approves them before they go live.
+- **Data is cleaned when it's loaded,** never edited in the source files. Clean records pass through a running ledger
+  of authorization units, daily totals and earlier submissions, so each claim is judged the way the payer will judge
+  it.
+- **Every claim it flags gets a next step.** Safe fixes are applied automatically. Problems the submitter can fix go
+  back to them. Duplicates are stopped. Only judgement calls reach a reviewer (through a Discord bot, standing in for
+  Slack), with the exact fix suggested.
 
-Checks home-care claims **before they go to the payer**. For each claim it predicts paid or denied (and the denial
-code), applies the safe fixes on its own, sends problems the submitter can fix (visit time, filing limit) straight
-back to them, and sends only the judgement calls to a reviewer through a Discord bot (standing in for Slack).
+The **back-test on the claims history catches every rule-based denial code** (99.7% exact match, leaving out the
+generic "contact payer" denials, which can't be predicted). A reviewer sees **17% of claims**. The figures come from
+synthetic data, so the rates matter more than the dollar amounts.
 
 > **Rules decide. People approve anything that costs money or is ambiguous. The LLM explains, and proposes new rules.**
 
