@@ -1,5 +1,24 @@
 # Pre-submission claim checker
 
+## Business case
+
+Agencies on Exchange4Health lose money to claim denials they could have avoided. In the claims history, **28.7% of
+claims were denied, $115k of $377k billed (30.4%)**. Almost none of that comes back: the data pack has only **14
+corrected claims against 1,099 denials (about 1%)**. The rest is lost revenue, and late-filing denials can't be
+recovered at all. Yet **about 94% of denied dollars come from rules that can be checked before the claim is sent**:
+missing or wrong authorizations, unverified visits, more units than the visit supports, filing deadlines, modifiers
+and duplicates. A pre-submission checker that applies each payer's rules to the EVV, authorization and claims data
+Exchange4Health already holds:
+
+- **catches every rule-based denial code in a back-test on the claims history** (99.7% exact match, leaving out the
+  generic "contact payer" denials, which can't be predicted)
+- stops 18 claims that would bill again for visits already paid
+- sends only **17% of claims** to a person for review
+
+For agencies that means more cash, paid sooner, with less rework. For payers it means fewer bad claims and less double
+billing. For Exchange4Health it is a feature only a platform holding all three data sets can offer. These figures come
+from synthetic data (12 agencies, about 6 months), so the rates matter more than the dollar amounts.
+
 Checks home-care claims **before they go to the payer**. For each claim it predicts paid or denied (and the denial
 code), applies the safe fixes on its own, sends problems the submitter can fix (visit time, filing limit) straight
 back to them, and sends only the judgement calls to a reviewer through a Discord bot (standing in for Slack).
